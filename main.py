@@ -1,25 +1,46 @@
 import discord
-from discord import Permissions
+from discord.ext import commands
 import os
 
 discord_token = ""
 client_id = ""
 with open("discord.txt", "r") as discordfile:
-    discord_token = discordfile.readlines()[0]
-    client_id = discordfile.readlines()[1]
+    lines = discordfile.readlines()
+    discord_token = lines[0]
+    client_id = lines[1]
 
-class MyClient(discord.Client):
-    async def on_ready(self):
-        print(f'Logged on as {self.user}!')
+print("Invitation link: "+discord.utils.oauth_url(client_id, permissions=discord.Permissions(18479365422144)))
 
-    async def on_message(self, message):
-        print(f'Message from {message.author}: {message.content}')
-
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.message_content = True
+bot = commands.Bot(command_prefix='/', description="It's a dungeon game in Discord.", intents=intents)
 
-client = MyClient(intents=intents)
-client.run(discord_token)
-permissions = Permissions.manage_roles | Permissions.read_messages | Permissions.manage_events | Permissions.send_messages | Permissions.create_public_threads | Permissions.send_messages_in_threads| Permissions.send_tts_messages | Permissions.manage_messages | Permissions.manage_threads | Permissions.embed_links | Permissions.attach_files | Permissions.mention_everyone | Permissions.add_reactions | Permissions.use_application_commands | Permissions.use_embedded_activities
-print("permissions")
-print("Invitation link: "+discord.utils.oauth_url(client_id, permissions=permissions))
+# commandTree = discord.app_commands.CommandTree(bot, )
+
+@bot.event
+async def on_ready():
+    print(f'We have logged in as {bot.user}')
+    await bot.tree.sync()
+
+# @bot.event
+# async def on_message(message):
+#     await bot.process_commands(message)
+#     if message.author == bot.user:
+#         return
+
+#     if message.content.startswith('$hello'):
+#         await message.channel.send('Hello!')
+async def argauto():
+    return "arg"
+@bot.hybrid_command()
+async def test(ctx, arg):
+    await ctx.send(arg)
+
+@bot.tree.command(name="opengame", description="Opens the game in that channel")
+async def opengame(ctx: discord.Interaction):
+    print("ok")
+
+
+# async def opengameAutocomplete()
+
+bot.run(discord_token)
