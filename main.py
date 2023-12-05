@@ -2,12 +2,8 @@ import discord
 from discord import app_commands
 import os
 
-discord_token = ""
-client_id = ""
-with open("discord.txt", "r") as discordfile:
-    lines = discordfile.readlines()
-    discord_token = lines[0]
-    client_id = lines[1]
+discord_token = os.environ["DISCORD_TOKEN"]
+client_id = os.environ["DISCORD_CLIENT_ID"]
 
 print("Invitation link: "+discord.utils.oauth_url(client_id, permissions=discord.Permissions(18479365422144)))
 
