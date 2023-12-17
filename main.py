@@ -1,24 +1,54 @@
 import discord
 from discord import app_commands
 import os
+from Dungeoneer import *
 
 discord_token = os.environ["DISCORD_TOKEN"]
 client_id = os.environ["DISCORD_CLIENT_ID"]
 
 print("Invitation link: "+discord.utils.oauth_url(client_id, permissions=discord.Permissions(18479365422144)))
 
+globalGame = Dungeoneer()
+
 client = discord.Client(intents=discord.Intents.all())
 tree = app_commands.CommandTree(client)
 
-class GameView(discord.ui.View):
-    @discord.ui.button(label="Click!!")
-    async def clickbutton(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.user.send("why didd you click??")
+def CreateEmbed(userID: int) -> discord.Embed:
+    embed = discord.embeds.Embed(colour=discord.Colour(0xfc9403))
+    embed.add_field(name="", value=globalGame.getPlayer(userID).GetImage())
+    return embed
 
-class MyView(discord.ui.View): # Create a class called MyView that subclasses discord.ui.View
-    @discord.ui.button(label="Click me!", style=discord.ButtonStyle.primary, emoji="😎") # Create a button with the label "😎 Click me!" with color Blurple
-    async def button_callback(self, button, interaction):
-        await interaction.response.send_message("You clicked the button!")
+class GameView(discord.ui.View):
+    @discord.ui.button(emoji="⚙️", )
+    async def moveUp(self, interaction: discord.Interaction, button: discord.ui.Button):
+        pass
+    @discord.ui.button(emoji="⬆️")
+    async def moveUp(self, interaction: discord.Interaction, button: discord.ui.Button):
+        globalGame.getPlayer(interaction.user.id).Move(0, 1)
+        await interaction.response.edit_message(embed=CreateEmbed(interaction.user.id), view=GameView())
+
+    @discord.ui.button(emoji="⬇️")
+    async def moveDown(self, interaction: discord.Interaction, button: discord.ui.Button):
+        globalGame.getPlayer(interaction.user.id).Move(0, -1)
+        await interaction.response.edit_message(embed=CreateEmbed(interaction.user.id), view=GameView())
+
+    @discord.ui.button(emoji="➡️")
+    async def moveRight(self, interaction: discord.Interaction, button: discord.ui.Button):
+        globalGame.getPlayer(interaction.user.id).Move(1, 0)
+        await interaction.response.edit_message(embed=CreateEmbed(interaction.user.id), view=GameView())
+
+    @discord.ui.button(emoji="⬅️")
+    async def moveLeft(self, interaction: discord.Interaction, button: discord.ui.Button):
+        globalGame.getPlayer(interaction.user.id).Move(-1, 0)
+        await interaction.response.edit_message(embed=CreateEmbed(interaction.user.id), view=GameView())
+    @discord.ui.button(emoji="🗡️")
+    async def moveUp(self, interaction: discord.Interaction, button: discord.ui.Button):
+        pass
+
+class MenuView(discord.ui.View):
+    @discord.ui.button(label="Start")
+    async def clickbutton(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(embed=CreateEmbed(interaction.user.id), view=GameView(), ephemeral=True)
 
 @client.event
 async def on_ready():
@@ -29,6 +59,6 @@ async def on_ready():
 async def opengame(interaction: discord.Interaction):
     # gameEmbed = discord.embeds.Embed()
     # gameEmbed.add_field(name="test", value="test")
-    a = await interaction.response.send_message("opened here", view=GameView())
+    await interaction.response.send_message("Dungeoneer Game", view=MenuView())
 
 client.run(discord_token)
