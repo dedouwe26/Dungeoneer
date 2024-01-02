@@ -8,6 +8,14 @@ client_id = os.environ["DISCORD_CLIENT_ID"]
 
 print("Invitation link: "+discord.utils.oauth_url(client_id, permissions=discord.Permissions(18479365422144)))
 
+class Dungeoneer:
+    players: dict[int, Player] = {}
+    def getPlayer(self, userID: int) -> Player:
+        return self.players[userID] if userID in self.players else self.createPlayer(userID)
+    def createPlayer(self, id) -> Player:
+        player = Player(Seed(id)) 
+        return player
+
 globalGame = Dungeoneer()
 
 client = discord.Client(intents=discord.Intents.all())
