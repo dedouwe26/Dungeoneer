@@ -2,6 +2,10 @@ import random
 
 TileType = {"WALL": "#", "FLOOR": " ", "CHEST": "@", "ENEMY": ".", "ENTRANCE": "^", "EXIT": "v", "BANDAGE": "="}
 
+# One tile: 16x16px
+# player view size: 16x12 tiles
+# screen ratio: (4/3)
+
 # Generator settings
 MAP_SIZE =  80
 AMOUNT_ROOMS = 15
@@ -14,7 +18,7 @@ HALLWAY_ROOM_MAX_SIZE = 8
 class Seed:
     seed: int
     def __init__(self, seed: int = random.randint(0,1099511627775), seedKey: str = None):
-        if not seedKey.startswith("&"):
+        if seedKey==None:
             self.seed = seed
         else:
             self.seed = int(seedKey.removeprefix("&"), 16)
@@ -149,29 +153,44 @@ IMGHEIGHT = 16
 
 class Player:
     playerSeed: Seed
-    isInHub: bool = True
-    CurrentMap: Map
-    OptionsOpened: bool = False
-    level: int = 0
+    isInShop: bool = True
+    currentMap: Map
+    optionsOpened: bool = False
+    level: float = 0
     maxHealth: float = 10
     health: float = maxHealth
     x: float = 0
     y: float = 0
+    def LoadData(self, path: str):
+        with open(path, "r") as file:
+            lines = file.readlines()
+            self.level = float(lines[0])
+            self.isInShop = bool(lines[1])
+            self.playerSeed = Seed(0, lines[2])
+            self.x = float(lines[3])
+            self.y = float(lines[4])
+            self.health = float(lines[5])
+            self.maxHealth = float(lines[6])
+    def SaveData(self, path: str):
+        with open(path, "w") as file:
+            file.write(f"{self.level}\n{self.isInShop}\n{self.playerSeed}\n{self.x}\n{self.y}\n{self.health}\n{self.maxHealth}")
     def __init__(self, seed: Seed):
         self.playerSeed = seed
     def AmountBandages(self) -> int:
         # health < 30% : 2, health <= 50% : 1, health > 50% : 0
         return 2 if self.health < self.maxHealth*.3 else 1 if self.health <= self.maxHealth*.5 else 0
-    def GetImage(self) -> str:
-        return "aaa"
+    def getRenderData() -> list[list[str]]:
+        pass
+    def getImage() -> str:
+        pass
     def Move(self, x: int, y: int):
-        self.X+=x
-        self.Y+=y
+        self.x+=x
+        self.y+=y
     def NextLevel(self):
         self.level+=1
-        self.CurrentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
-        self.x = self.CurrentMap.startPos[0]
-        self.y = self.CurrentMap.startPos[1]
+        self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
+        self.x = self.currentMap.startPos[0]
+        self.y = self.currentMap.startPos[1]
 
 if __name__ == "__main__":
     print(f"Dungeoneer\n{'  '.join([TileType[key]+' = '+key for key in TileType])}")
