@@ -5,6 +5,18 @@ from pygame.locals import *
 
 SPEED = 0.1
 
+BANDAGE_IMG = pygame.image.load("assets/bandage.png")
+CHEST_IMG = pygame.image.load("assets/chest.png")
+ENEMY1_IMG = pygame.image.load("assets/enemy1.png")
+ENEMY2_IMG = pygame.image.load("assets/enemy2.png")
+ENTRANCE_IMG = pygame.image.load("assets/entrance.png")
+EXIT_IMG = pygame.image.load("assets/exit.png")
+FILLED_IMG = pygame.image.load("assets/filled.png")
+FLOOR_IMG = pygame.image.load("assets/floor.png")
+LOGO_IMG = pygame.image.load("assets/logo.png")
+PLAYER_IMG = pygame.image.load("assets/player.png")
+WALL_IMG = pygame.image.load("assets/wall.png")
+
 class Dungeoneer:
     player: Player
     displaySurf: pygame.Surface
@@ -12,8 +24,9 @@ class Dungeoneer:
     def __init__(self):
         self.player = Player(Seed())
         pygame.init()
-        self.displaySurf: pygame.Surface = pygame.display.set_mode((320, 240)) # Gameshell size.
+        self.displaySurf = pygame.display.set_mode((320, 240)) # Gameshell size.
         pygame.display.set_caption('Dungeoneer') 
+        pygame.display.set_icon(LOGO_IMG)
         self.FPS = pygame.time.Clock()
         self.FPS.tick(60) # The refresh rate of gameshell.
         while True:
@@ -36,10 +49,7 @@ class Dungeoneer:
             velocity[0]+=SPEED
 
         # map = self.player.getRenderData()
-
-        # sizePerPixel = self.displaySurf.get_size()[]
         self.player.Move(velocity[0], velocity[1])
-        # pygame.transform.scale(self.displaySurf, pygame.trans)
         pygame.display.update()
     def exit(self):
         pygame.quit()

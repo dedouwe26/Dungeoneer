@@ -1,10 +1,11 @@
 import random
 
-TileType = {"WALL": "#", "FLOOR": " ", "CHEST": "@", "ENEMY": ".", "ENTRANCE": "^", "EXIT": "v", "BANDAGE": "="}
+TileType = {"FILLED": "#", "FLOOR": " ", "CHEST": "@", "ENEMY": ".", "ENTRANCE": "^", "EXIT": "v", "BANDAGE": "=", "WALL": "_"}
 
 # One tile: 16x16px
 # player view size: 16x12 tiles
 # screen ratio: (4/3)
+TILE_SIZE = 16
 
 # Generator settings
 MAP_SIZE =  80
@@ -20,8 +21,10 @@ class Seed:
     def __init__(self, seed: int = random.randint(0,1099511627775), seedKey: str = None):
         if seedKey==None:
             self.seed = seed
-        else:
+        elif seedKey!="":
             self.seed = int(seedKey.removeprefix("&"), 16)
+        else:
+            self.seed = seed
 
     def __str__(self) -> str:
         return "&"+hex(self.seed).removeprefix("0x")
@@ -46,7 +49,7 @@ class Map:
         self.Generate(enemyCount, bandageCount)
 
     def Generate(self, enemyCount: int, bandageCount: int):
-        self.map = [[TileType["WALL"] for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
+        self.map = [[TileType["FILLED"] for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
         rand: random.Random = self.mapSeed.GetRandom()
 
         # Generate rooms
@@ -147,9 +150,15 @@ class Map:
         for enemy in self.enemys:
             tempmap[round(enemy[1])][round(enemy[2])] = TileType["ENEMY"]
         return "\n".join([" ".join(row) for row in tempmap])
+    def toRenderMap(self) -> list[tuple[str, int, int]]:
+        result: list[tuple[str, int, int]] = []
+        for y, row in enumerate(map):
+            for x, tile in enumerate(row):
+                if self.map[y+1][x] == TileType["FLOOR"] and tile == TileType["FILLED"]:
+                    tile = TileType["WALL"]
+                result.append((tile, x*TILE_SIZE, y*TILE_SIZE))
+                
 
-IMGWIDTH = 16
-IMGHEIGHT = 16
 
 class Player:
     playerSeed: Seed
@@ -179,10 +188,8 @@ class Player:
     def AmountBandages(self) -> int:
         # health < 30% : 2, health <= 50% : 1, health > 50% : 0
         return 2 if self.health < self.maxHealth*.3 else 1 if self.health <= self.maxHealth*.5 else 0
-    def getRenderData() -> list[list[str]]:
-        pass
-    def getImage() -> str:
-        pass
+    def getCameraOffset(self, width: int, height: int) -> tuple[int, int]:
+        self.x
     def Move(self, x: int, y: int):
         self.x+=x
         self.y+=y
