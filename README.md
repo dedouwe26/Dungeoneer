@@ -1,6 +1,9 @@
 # Dungeoneer
 Dungeoneer is an infinite dungeon game with generated dungeons. Generate random levels or use a seed.
 It's built in python and can be played on a pc and in discord.
+## Discord environment variables
+DISCORD_TOKEN = "your discord bot token" <br>
+DISCORD_CLIENT_ID = "your discord client id" <br>
 ## File Format
 <code>
 {lvl: float}    <br>

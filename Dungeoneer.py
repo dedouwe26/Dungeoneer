@@ -38,9 +38,10 @@ class Map:
     mapSeed: Seed
     level: int
     rooms: list[tuple[int, int, int, int]] = []
-    enemys = list[tuple[int, float, float]]
+    enemys = list[tuple[float, float]]
     map = list[list[str]]
     startPos: tuple[float, float]
+    endPos: tuple[float, float]
     bandages = list[tuple[int, int]]
     chestPos = tuple[int, int]
     def __init__(self, level: int, seed: Seed, enemyCount: int, bandageCount: int = 0):
@@ -99,9 +100,9 @@ class Map:
                     hallway_room_x = x0 - hallway_room_width // 2
                     hallway_room_y = y0 - hallway_room_height // 2
 
-                    for i in range(hallway_room_x, hallway_room_x + hallway_room_width):
-                        for j in range(hallway_room_y, hallway_room_y + hallway_room_height):
-                            self.map[i][j] = TileType["FLOOR"]
+                    for j in range(hallway_room_x, hallway_room_x + hallway_room_width):
+                        for k in range(hallway_room_y, hallway_room_y + hallway_room_height):
+                            self.map[j][k] = TileType["FLOOR"]
             # y hallway
             while y0 != y1:
                 self.map[x0][y0] = TileType["FLOOR"]
@@ -114,33 +115,36 @@ class Map:
                     hallway_room_x = x0 - hallway_room_width // 2
                     hallway_room_y = y0 - hallway_room_height // 2
 
-                    for i in range(hallway_room_x, hallway_room_x + hallway_room_width):
-                        for j in range(hallway_room_y, hallway_room_y + hallway_room_height):
-                            self.map[i][j] = TileType["FLOOR"]
+                    for j in range(hallway_room_x, hallway_room_x + hallway_room_width):
+                        for k in range(hallway_room_y, hallway_room_y + hallway_room_height):
+                            self.map[j][k] = TileType["FLOOR"]
             
-        # Calculate starting position
+        # Calculate starting and ending positions
         self.startPos = (self.rooms[0][0]+self.rooms[0][2]/2, self.rooms[0][1]+self.rooms[0][3]/2)
-
+        self.endPos = (self.rooms[len(self.rooms)-1][0]+self.rooms[len(self.rooms)-1][2]/2, self.rooms[len(self.rooms)-1][1]+self.rooms[len(self.rooms)-1][3]/2)
+        
         # Post-Process
 
         # entrance
-        self.map[self.rooms[0][0] + self.rooms[0][2] // 2][self.rooms[0][1] + self.rooms[0][3] // 2] = TileType["ENTRANCE"]
+        self.map[round(self.startPos[0])][round(self.startPos[1])] = TileType["ENTRANCE"]
         # exit
-        self.map[self.rooms[AMOUNT_ROOMS-1][0] + self.rooms[AMOUNT_ROOMS-1][2] // 2][self.rooms[AMOUNT_ROOMS-1][1] + self.rooms[AMOUNT_ROOMS-1][3] // 2] = TileType["EXIT"]
+        self.map[round(self.endPos[0])][round(self.endPos[1])] = TileType["EXIT"]
         
         # Chest
         floor_positions = [(i, j) for i in range(MAP_SIZE) for j in range(MAP_SIZE) if self.map[i][j] == TileType["FLOOR"]]
 
-        self.chestPos = random.choice(floor_positions)
+        self.chestPos = rand.choice(floor_positions)
+        floor_positions.remove(self.chestPos)
         self.map[self.chestPos[0]][self.chestPos[1]] = TileType["CHEST"]
 
         # Enemy's
-        floor_positions = [(rand.getrandbits(1), float(i), float(j)) for i in range(MAP_SIZE) for j in range(MAP_SIZE) if self.map[i][j] == TileType["FLOOR"]]
-        self.enemys = random.sample(floor_positions, min(enemyCount, len(floor_positions)))
+        for i in range(enemyCount):
+            position = rand.choice(floor_positions)
+            floor_positions.remove(position)
+            self.enemys.append(position)
 
         # Bandages (health dependent)
-        floor_positions = [(i, j) for i in range(MAP_SIZE) for j in range(MAP_SIZE) if self.map[i][j] == TileType["FLOOR"]]
-        self.bandages = random.sample(floor_positions, min(bandageCount, len(floor_positions)))
+        self.bandages = rand.sample(floor_positions, min(bandageCount, len(floor_positions)))
 
         for position in self.bandages:
             self.map[position[0]][position[1]] = TileType["BANDAGE"]
@@ -148,7 +152,7 @@ class Map:
     def toMap(self) -> str:
         tempmap = self.map
         for enemy in self.enemys:
-            tempmap[round(enemy[1])][round(enemy[2])] = TileType["ENEMY"]
+            tempmap[round(enemy[0])][round(enemy[1])] = TileType["ENEMY"]
         return "\n".join([" ".join(row) for row in tempmap])
     def toRenderMap(self) -> list[tuple[str, int, int]]:
         result: list[tuple[str, int, int]] = []
