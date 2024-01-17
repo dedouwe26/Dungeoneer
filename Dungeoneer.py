@@ -1,6 +1,11 @@
 import random
 
-TileType = {"WALL": "#", "FLOOR": " ", "CHEST": "@", "ENEMY": ".", "ENTRANCE": "^", "EXIT": "v", "BANDAGE": "="}
+TileType = {"FILLED": "#", "FLOOR": " ", "CHEST": "@", "ENEMY": ".", "ENTRANCE": "^", "EXIT": "v", "BANDAGE": "=", "WALL": "_"}
+
+# One tile: 16x16px
+# player view size: 16x12 tiles
+# screen ratio: (4/3)
+TILE_SIZE = 16
 
 # Generator settings
 MAP_SIZE =  80
@@ -14,10 +19,12 @@ HALLWAY_ROOM_MAX_SIZE = 8
 class Seed:
     seed: int
     def __init__(self, seed: int = random.randint(0,1099511627775), seedKey: str = None):
-        if not seedKey.startswith("&"):
+        if seedKey==None:
             self.seed = seed
-        else:
+        elif seedKey!="":
             self.seed = int(seedKey.removeprefix("&"), 16)
+        else:
+            self.seed = seed
 
     def __str__(self) -> str:
         return "&"+hex(self.seed).removeprefix("0x")
@@ -31,9 +38,10 @@ class Map:
     mapSeed: Seed
     level: int
     rooms: list[tuple[int, int, int, int]] = []
-    enemys = list[tuple[int, float, float]]
+    enemys = list[tuple[float, float]]
     map = list[list[str]]
     startPos: tuple[float, float]
+    endPos: tuple[float, float]
     bandages = list[tuple[int, int]]
     chestPos = tuple[int, int]
     def __init__(self, level: int, seed: Seed, enemyCount: int, bandageCount: int = 0):
@@ -42,7 +50,7 @@ class Map:
         self.Generate(enemyCount, bandageCount)
 
     def Generate(self, enemyCount: int, bandageCount: int):
-        self.map = [[TileType["WALL"] for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
+        self.map = [[TileType["FILLED"] for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
         rand: random.Random = self.mapSeed.GetRandom()
 
         # Generate rooms
@@ -92,9 +100,9 @@ class Map:
                     hallway_room_x = x0 - hallway_room_width // 2
                     hallway_room_y = y0 - hallway_room_height // 2
 
-                    for i in range(hallway_room_x, hallway_room_x + hallway_room_width):
-                        for j in range(hallway_room_y, hallway_room_y + hallway_room_height):
-                            self.map[i][j] = TileType["FLOOR"]
+                    for j in range(hallway_room_x, hallway_room_x + hallway_room_width):
+                        for k in range(hallway_room_y, hallway_room_y + hallway_room_height):
+                            self.map[j][k] = TileType["FLOOR"]
             # y hallway
             while y0 != y1:
                 self.map[x0][y0] = TileType["FLOOR"]
@@ -107,33 +115,36 @@ class Map:
                     hallway_room_x = x0 - hallway_room_width // 2
                     hallway_room_y = y0 - hallway_room_height // 2
 
-                    for i in range(hallway_room_x, hallway_room_x + hallway_room_width):
-                        for j in range(hallway_room_y, hallway_room_y + hallway_room_height):
-                            self.map[i][j] = TileType["FLOOR"]
+                    for j in range(hallway_room_x, hallway_room_x + hallway_room_width):
+                        for k in range(hallway_room_y, hallway_room_y + hallway_room_height):
+                            self.map[j][k] = TileType["FLOOR"]
             
-        # Calculate starting position
+        # Calculate starting and ending positions
         self.startPos = (self.rooms[0][0]+self.rooms[0][2]/2, self.rooms[0][1]+self.rooms[0][3]/2)
-
+        self.endPos = (self.rooms[len(self.rooms)-1][0]+self.rooms[len(self.rooms)-1][2]/2, self.rooms[len(self.rooms)-1][1]+self.rooms[len(self.rooms)-1][3]/2)
+        
         # Post-Process
 
         # entrance
-        self.map[self.rooms[0][0] + self.rooms[0][2] // 2][self.rooms[0][1] + self.rooms[0][3] // 2] = TileType["ENTRANCE"]
+        self.map[round(self.startPos[0])][round(self.startPos[1])] = TileType["ENTRANCE"]
         # exit
-        self.map[self.rooms[AMOUNT_ROOMS-1][0] + self.rooms[AMOUNT_ROOMS-1][2] // 2][self.rooms[AMOUNT_ROOMS-1][1] + self.rooms[AMOUNT_ROOMS-1][3] // 2] = TileType["EXIT"]
+        self.map[round(self.endPos[0])][round(self.endPos[1])] = TileType["EXIT"]
         
         # Chest
         floor_positions = [(i, j) for i in range(MAP_SIZE) for j in range(MAP_SIZE) if self.map[i][j] == TileType["FLOOR"]]
 
-        self.chestPos = random.choice(floor_positions)
+        self.chestPos = rand.choice(floor_positions)
+        floor_positions.remove(self.chestPos)
         self.map[self.chestPos[0]][self.chestPos[1]] = TileType["CHEST"]
 
         # Enemy's
-        floor_positions = [(rand.getrandbits(1), float(i), float(j)) for i in range(MAP_SIZE) for j in range(MAP_SIZE) if self.map[i][j] == TileType["FLOOR"]]
-        self.enemys = random.sample(floor_positions, min(enemyCount, len(floor_positions)))
+        for i in range(enemyCount):
+            position = rand.choice(floor_positions)
+            floor_positions.remove(position)
+            self.enemys.append(position)
 
         # Bandages (health dependent)
-        floor_positions = [(i, j) for i in range(MAP_SIZE) for j in range(MAP_SIZE) if self.map[i][j] == TileType["FLOOR"]]
-        self.bandages = random.sample(floor_positions, min(bandageCount, len(floor_positions)))
+        self.bandages = rand.sample(floor_positions, min(bandageCount, len(floor_positions)))
 
         for position in self.bandages:
             self.map[position[0]][position[1]] = TileType["BANDAGE"]
@@ -141,37 +152,56 @@ class Map:
     def toMap(self) -> str:
         tempmap = self.map
         for enemy in self.enemys:
-            tempmap[round(enemy[1])][round(enemy[2])] = TileType["ENEMY"]
+            tempmap[round(enemy[0])][round(enemy[1])] = TileType["ENEMY"]
         return "\n".join([" ".join(row) for row in tempmap])
+    def toRenderMap(self) -> list[tuple[str, int, int]]:
+        result: list[tuple[str, int, int]] = []
+        for y, row in enumerate(map):
+            for x, tile in enumerate(row):
+                if self.map[y+1][x] == TileType["FLOOR"] and tile == TileType["FILLED"]:
+                    tile = TileType["WALL"]
+                result.append((tile, x*TILE_SIZE, y*TILE_SIZE))
+                
 
-IMGWIDTH = 16
-IMGHEIGHT = 16
 
 class Player:
     playerSeed: Seed
-    isInHub: bool = True
-    CurrentMap: Map
-    OptionsOpened: bool = False
-    level: int = 0
+    isInShop: bool = True
+    currentMap: Map
+    optionsOpened: bool = False
+    level: float = 0
     maxHealth: float = 10
     health: float = maxHealth
     x: float = 0
     y: float = 0
+    def LoadData(self, path: str):
+        with open(path, "r") as file:
+            lines = file.readlines()
+            self.level = float(lines[0])
+            self.isInShop = bool(lines[1])
+            self.playerSeed = Seed(0, lines[2])
+            self.x = float(lines[3])
+            self.y = float(lines[4])
+            self.health = float(lines[5])
+            self.maxHealth = float(lines[6])
+    def SaveData(self, path: str):
+        with open(path, "w") as file:
+            file.write(f"{self.level}\n{self.isInShop}\n{self.playerSeed}\n{self.x}\n{self.y}\n{self.health}\n{self.maxHealth}")
     def __init__(self, seed: Seed):
         self.playerSeed = seed
     def AmountBandages(self) -> int:
         # health < 30% : 2, health <= 50% : 1, health > 50% : 0
         return 2 if self.health < self.maxHealth*.3 else 1 if self.health <= self.maxHealth*.5 else 0
-    def GetImage(self) -> str:
-        return "aaa"
+    def getCameraOffset(self, width: int, height: int) -> tuple[int, int]:
+        self.x
     def Move(self, x: int, y: int):
-        self.X+=x
-        self.Y+=y
+        self.x+=x
+        self.y+=y
     def NextLevel(self):
         self.level+=1
-        self.CurrentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
-        self.x = self.CurrentMap.startPos[0]
-        self.y = self.CurrentMap.startPos[1]
+        self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
+        self.x = self.currentMap.startPos[0]
+        self.y = self.currentMap.startPos[1]
 
 if __name__ == "__main__":
     print(f"Dungeoneer\n{'  '.join([TileType[key]+' = '+key for key in TileType])}")
