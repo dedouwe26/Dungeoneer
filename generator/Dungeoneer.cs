@@ -195,7 +195,7 @@ namespace Dungeoneer
             // Entrance
             map[(int)MathF.Round(startPos.x)][(int)MathF.Round(startPos.y)] = Tile.Entrance;
             // Exit
-            map[(int)MathF.Round(endPos.x)][(int)MathF.Round(endPos.y)] = Tile.Entrance;
+            map[(int)MathF.Round(endPos.x)][(int)MathF.Round(endPos.y)] = Tile.Exit;
 
             // Get floor positions
             List<Position> floors = new List<Position>();
@@ -238,15 +238,14 @@ namespace Dungeoneer
             List<List<Tile>> tempmap = map;
             foreach (Coordinate enemy in enemys)
             {
-                tempmap[(int)MathF.Round(enemy.y)][(int)MathF.Round(enemy.x)] = Tile.Enemy;
+                tempmap[(int)MathF.Round(enemy.x)][(int)MathF.Round(enemy.y)] = Tile.Enemy;
             }
             string result = "";
             for (int x = 0; x < tempmap.Count; x++)
             {
-                List<Tile> row = tempmap[x];
                 for (int y = 0; y < tempmap.Count; y++)
                 {
-                    result += row[y].GetIcon()+" ";
+                    result += tempmap[x][y].GetIcon()+" ";
                 }
                 result+="\n";
             }

@@ -1,6 +1,6 @@
 import random
 
-TileType = {"FILLED": "#", "FLOOR": " ", "CHEST": "@", "ENEMY": ".", "ENTRANCE": "^", "EXIT": "v", "BANDAGE": "=", "WALL": "_"}
+TileType = {"FILLED": "#", "FLOOR": " ", "CHEST": "@", "ENEMY": ".", "ENTRANCE": "^", "EXIT": "v", "EXITCLOSED": "_", "BANDAGE": "=", "WALL": "%"}
 
 # One tile: 16x16px
 # player view size: 16x12 tiles
@@ -38,12 +38,12 @@ class Map:
     mapSeed: Seed
     level: int
     rooms: list[tuple[int, int, int, int]] = []
-    enemys = list[tuple[float, float]]
-    map = list[list[str]]
+    enemys: list[tuple[float, float]] = []
+    map: list[list[str]]
     startPos: tuple[float, float]
     endPos: tuple[float, float]
-    bandages = list[tuple[int, int]]
-    chestPos = tuple[int, int]
+    bandages: list[tuple[int, int]] = []
+    chestPos: tuple[int, int]
     def __init__(self, level: int, seed: Seed, enemyCount: int, bandageCount: int = 0):
         self.level = level
         self.mapSeed = seed.Add(self.level)
@@ -141,7 +141,7 @@ class Map:
         for i in range(enemyCount):
             position = rand.choice(floor_positions)
             floor_positions.remove(position)
-            self.enemys.append(position)
+            self.enemys.append((float(position[0]), float(position[1])))
 
         # Bandages (health dependent)
         self.bandages = rand.sample(floor_positions, min(bandageCount, len(floor_positions)))
@@ -156,11 +156,13 @@ class Map:
         return "\n".join([" ".join(row) for row in tempmap])
     def toRenderMap(self) -> list[tuple[str, int, int]]:
         result: list[tuple[str, int, int]] = []
-        for y, row in enumerate(map):
-            for x, tile in enumerate(row):
-                if self.map[y+1][x] == TileType["FLOOR"] and tile == TileType["FILLED"]:
+        for x, row in enumerate(self.map):
+            for y in range(len(row)-1):
+                tile = row[y]
+                if self.map[x][y+1] == TileType["FLOOR"] and tile == TileType["FILLED"]:
                     tile = TileType["WALL"]
-                result.append((tile, x*TILE_SIZE, y*TILE_SIZE))
+                result.append((tile, x, y))
+        return result
                 
 
 
@@ -184,17 +186,19 @@ class Player:
             self.y = float(lines[4])
             self.health = float(lines[5])
             self.maxHealth = float(lines[6])
+            self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
     def SaveData(self, path: str):
         with open(path, "w") as file:
             file.write(f"{self.level}\n{self.isInShop}\n{self.playerSeed}\n{self.x}\n{self.y}\n{self.health}\n{self.maxHealth}")
     def __init__(self, seed: Seed):
         self.playerSeed = seed
+        self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
     def AmountBandages(self) -> int:
         # health < 30% : 2, health <= 50% : 1, health > 50% : 0
         return 2 if self.health < self.maxHealth*.3 else 1 if self.health <= self.maxHealth*.5 else 0
-    def getCameraOffset(self, width: int, height: int) -> tuple[int, int]:
-        self.x
-    def Move(self, x: int, y: int):
+    def getCameraOffset(self) -> tuple[int, int]:
+        return (self.x*TILE_SIZE + 160, self.y*TILE_SIZE + 120)
+    def Move(self, x: float, y: float):
         self.x+=x
         self.y+=y
     def NextLevel(self):
