@@ -167,6 +167,7 @@ class Map:
 
 
 class Player:
+    facing: bool = False
     playerSeed: Seed
     isInShop: bool = True
     currentMap: Map
@@ -201,6 +202,7 @@ class Player:
     def Move(self, x: float, y: float):
         self.x+=x
         self.y+=y
+        self.facing = True if x < 0 else False
     def NextLevel(self):
         self.level+=1
         self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())

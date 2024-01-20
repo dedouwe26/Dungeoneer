@@ -69,7 +69,8 @@ class Dungeoneer:
         offset = self.player.getCameraOffset()
         for tile in self.player.currentMap.toRenderMap():
             self.gameDisplay.blit(FILLED_IMG if tile[0] == TileType["FILLED"] else FLOOR_IMG if tile[0] == TileType["FLOOR"] else CHEST_IMG if tile[0] == TileType["CHEST"] else ENTRANCE_IMG if tile[0] == TileType["ENTRANCE"] else EXIT_IMG if tile[0] == TileType["EXIT"] else WALL_IMG if tile[0] == TileType["WALL"] else BANDAGE_IMG, (tile[1]*16+offset[0], tile[2]*16+offset[1]))
-
+        for enemy in self.player.currentMap.enemys:
+            self.gameDisplay.blit(ENEMY1_IMG, (enemy[0]*16+offset[0], enemy[1]*16+offset[1]))
         self.gameDisplay.blit(PLAYER_IMG, (152, 112))
         pygame.display.update()
     def exit(self):
