@@ -1,23 +1,68 @@
+from shutil import move
 from Dungeoneer import *
 import sys
 import pygame
 from pygame.locals import *
 
-SPEED = 4
+rawtileset: pygame.Surface = pygame.image.load('assets/tileset.png')
+tileset: pygame.Surface = pygame.transform.scale(rawtileset, (rawtileset.get_size()[0]*WORLD_SIZE, rawtileset.get_size()[1]*WORLD_SIZE))
 
-BANDAGE_IMG = pygame.image.load("assets/bandage.png")
-CHEST_IMG = pygame.image.load("assets/chest.png")
-ENEMY1_IMG = pygame.image.load("assets/enemy1.png")
-ENEMY2_IMG = pygame.image.load("assets/enemy2.png")
-ENTRANCE_IMG = pygame.image.load("assets/entrance.png")
-EXIT_IMG = pygame.image.load("assets/exit.png")
-EXITCLOSED_IMG = pygame.image.load("assets/exitclosed.png")
-FILLED_IMG = pygame.image.load("assets/filled.png")
-FLOOR_IMG = pygame.image.load("assets/floor.png")
-LOGO_IMG = pygame.image.load("assets/logo.png")
-PLAYER_IMG = pygame.image.load("assets/player.png")
-WALL_IMG = pygame.image.load("assets/wall.png")
+hitSound: pygame.mixer.Sound = None
+killSound: pygame.mixer.Sound = None
+levelUpSound: pygame.mixer.Sound = None
+pickUpSound: pygame.mixer.Sound = None
 
+tileRects: dict[str, pygame.Rect] = {
+    "shadowpatchbottom": pygame.Rect(0, 0, TILE_SIZE, TILE_SIZE),
+    "shadowpatchtop": pygame.Rect(TILE_SIZE, 0, TILE_SIZE, TILE_SIZE),
+    "shadowpatchright": pygame.Rect(2*TILE_SIZE, 0, TILE_SIZE, TILE_SIZE),
+    "shadowpatchleft": pygame.Rect(0, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "exit": pygame.Rect(TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "entrance": pygame.Rect(2*TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "wallleft": pygame.Rect(3*TILE_SIZE, TILE_SIZE-4*WORLD_SIZE, TILE_SIZE, TILE_SIZE+4*WORLD_SIZE), # extra size?
+    "wall": pygame.Rect(4*TILE_SIZE, TILE_SIZE-4*WORLD_SIZE, TILE_SIZE, TILE_SIZE+4*WORLD_SIZE),
+    "wallright": pygame.Rect(5*TILE_SIZE, TILE_SIZE-4*WORLD_SIZE, TILE_SIZE, TILE_SIZE+4*WORLD_SIZE),
+    "wallboth": pygame.Rect(7*TILE_SIZE, 3*TILE_SIZE-4*WORLD_SIZE, TILE_SIZE, TILE_SIZE+4*WORLD_SIZE),
+    "goldsword": pygame.Rect(6*TILE_SIZE, 0, TILE_SIZE, TILE_SIZE*2),
+    "ironsword": pygame.Rect(7*TILE_SIZE, 0, TILE_SIZE, TILE_SIZE*2),
+    "closedchest": pygame.Rect(0, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "emptychest": pygame.Rect(0, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "fullchest": pygame.Rect(0, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "armoredplayer": pygame.Rect(TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "player": pygame.Rect(TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "mirroredarmoredplayer": pygame.Rect(tileset.get_size()[0]-2*TILE_SIZE, 3*TILE_SIZE, -TILE_SIZE, TILE_SIZE),
+    "mirroredplayer": pygame.Rect(tileset.get_size()[0]-2*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redpotion": pygame.Rect(2*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenpotion": pygame.Rect(3*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "yellowpotion": pygame.Rect(4*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "bluepotion": pygame.Rect(4*TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "bandage": pygame.Rect(3*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "floor": pygame.Rect(TILE_SIZE, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "rightsideedge": pygame.Rect(2*TILE_SIZE, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "leftsideedge": pygame.Rect(3*TILE_SIZE, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "topedge": pygame.Rect(4*TILE_SIZE, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "innercornerbottomright": pygame.Rect(5*TILE_SIZE, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "innercornerbottomleft": pygame.Rect(6*TILE_SIZE, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "innercornertopright": pygame.Rect(5*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "innercornertopleft": pygame.Rect(6*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "outercornerbottomright": pygame.Rect(5*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "outercornerbottomleft": pygame.Rect(6*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "outercornertopright": pygame.Rect(5*TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "outercornertopleft": pygame.Rect(6*TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenenemy0": pygame.Rect(0, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenenemy1": pygame.Rect(TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenenemy2": pygame.Rect(2*TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenenemy3": pygame.Rect(0, 6*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenenemy4": pygame.Rect(TILE_SIZE, 6*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenenemy5": pygame.Rect(3*TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy0": pygame.Rect(6*TILE_SIZE, 6*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy1": pygame.Rect(7*TILE_SIZE, 6*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy2": pygame.Rect(2*TILE_SIZE, 6*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy3": pygame.Rect(3*TILE_SIZE, 6*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy4": pygame.Rect(4*TILE_SIZE, 6*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy5": pygame.Rect(5*TILE_SIZE, 6*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+}
+LOGO_IMG = pygame.image.load('assets/logo.png')
 # Keybinds:
 # ^ move up
 # v move down
@@ -25,6 +70,10 @@ WALL_IMG = pygame.image.load("assets/wall.png")
 # > move right
 
 class Dungeoneer:
+    moveUp: bool = False
+    moveDown: bool = False
+    moveLeft: bool = False
+    moveRight: bool = False
     lastTime: int
     isRunning: bool = True
     player: Player
@@ -33,7 +82,12 @@ class Dungeoneer:
     def __init__(self):
         self.player = Player(Seed())
         pygame.init()
-        self.gameDisplay = pygame.display.set_mode((320, 240)) # Gameshell size.
+        pygame.mixer.init()
+        hitSound = pygame.mixer.Sound("assets/kill.wav")
+        killSound = pygame.mixer.Sound('assets/kill.wav')
+        levelUpSound = pygame.mixer.Sound('assets/levelup.wav')
+        pickUpSound = pygame.mixer.Sound('assets/pickup.wav')
+        self.gameDisplay = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT)) # Gameshell size.
         pygame.display.set_caption('Dungeoneer') 
         pygame.display.set_icon(LOGO_IMG)
         self.FPS = pygame.time.Clock()
@@ -50,34 +104,52 @@ class Dungeoneer:
             self.lastTime = t
             self.update(deltaTime)
     def update(self, deltaTime):
-        
-        velocity = [0, 0]
-        pressed_keys = pygame.key.get_pressed()
-        if pressed_keys[K_UP]:
-            velocity[1]+=SPEED*deltaTime
-        if pressed_keys[K_DOWN]:
-            velocity[1]-=SPEED*deltaTime
-        if pressed_keys[K_LEFT]:
-            velocity[0]+=SPEED*deltaTime
-        if pressed_keys[K_RIGHT]:
-            velocity[0]-=SPEED*deltaTime
+        if self.moveUp or self.moveDown or self.moveLeft or self.moveRight:
+            
+            velocity = [0, 0]
+            if self.moveUp:
+                velocity[1]-=deltaTime
+            if self.moveDown:
+                velocity[1]+=deltaTime
+            if self.moveLeft:
+                velocity[0]-=deltaTime
+            if self.moveRight:
+                velocity[0]+=deltaTime
+            self.player.Move(velocity[0], velocity[1])
+            # print(self.player.x, self.player.y, self.player.getCameraOffset())
 
-        
-        self.player.Move(velocity[0], velocity[1])
-        # print(self.player.x, self.player.y, self.player.getCameraOffset())
-        self.gameDisplay.fill((68,45,22))
+        self.gameDisplay.fill((28,17,23))
         offset = self.player.getCameraOffset()
-        for tile in self.player.currentMap.toRenderMap():
-            self.gameDisplay.blit(FILLED_IMG if tile[0] == TileType["FILLED"] else FLOOR_IMG if tile[0] == TileType["FLOOR"] else CHEST_IMG if tile[0] == TileType["CHEST"] else ENTRANCE_IMG if tile[0] == TileType["ENTRANCE"] else EXIT_IMG if tile[0] == TileType["EXIT"] else WALL_IMG if tile[0] == TileType["WALL"] else BANDAGE_IMG, (tile[1]*16+offset[0], tile[2]*16+offset[1]))
-        for enemy in self.player.currentMap.enemys:
-            self.gameDisplay.blit(ENEMY1_IMG, (enemy[0]*16+offset[0], enemy[1]*16+offset[1]))
-        self.gameDisplay.blit(PLAYER_IMG, (152, 112))
+        for i in range(len(tileRects)):
+            self.gameDisplay.blit(tileset, (offset[0]+i*TILE_SIZE, offset[1]), tileRects[list(tileRects)[i]])
+        for tile in self.player.currentMap.renderMap:
+            self.gameDisplay.blit(tileset, (offset[0]+tile[1]*TILE_SIZE, offset[1]+tile[2]*TILE_SIZE), tileRects[tile[0]])
+        self.gameDisplay.blit(pygame.transform.flip(tileset, self.player.facing, False), (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), tileRects["mirroredplayer"] if self.player.facing else tileRects["player"])
         pygame.display.update()
+        self.FPS.tick(60)
     def exit(self):
         self.isRunning = False
         pygame.quit()
         sys.exit()
     def onEvent(self, event: pygame.event.Event):
-        pass
+        if event.type == KEYDOWN:
+            if event.dict["key"]==K_UP:
+                self.moveUp = True
+            elif event.dict["key"]==K_DOWN:
+                self.moveDown = True
+            elif event.dict["key"]==K_LEFT:
+                self.moveLeft = True
+            elif event.dict["key"]==K_RIGHT:
+                self.moveRight = True
+        elif event.type == KEYUP:
+            if event.dict["key"]==K_UP:
+                self.moveUp = False
+            elif event.dict["key"]==K_DOWN:
+                self.moveDown = False
+            elif event.dict["key"]==K_LEFT:
+                self.moveLeft = False
+            elif event.dict["key"]==K_RIGHT:
+                self.moveRight = False
+        
 
 Dungeoneer()
