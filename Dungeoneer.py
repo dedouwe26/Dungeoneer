@@ -178,58 +178,49 @@ class Map:
             self.map[position[0]][position[1]].type = Tile.BANDAGE
 
         self.GenerateRenderMap()
-
+    def GetTile(self, x: int, y: int) -> Tile:
+        return Tile(self.map[x][y]) if len(self.map) > x >= 0 and len(self.map[0]) > y >= 0 else Tile(Tile.EMPTY)
     def toMap(self) -> str:
         tempmap = self.map
         for enemy in self.enemys:
             tempmap[round(enemy[0])][round(enemy[1])].type = Tile.ENEMY
-        return "\n".join([" ".join(row) for row in tempmap])
+        return "\n".join([" ".join([str(tile) for tile in row]) for row in tempmap])
     def GenerateRenderMap(self):
         self.renderMap = []
-        for x, row in enumerate(self.map):
-            for y in range(len(row)-1):
-                tile = row[y]
+        for x in range(len(self.map)):
+            for y in range(len(self.map[x])):
+                tile = self.map[x][y]
                 # If floor
                 if tile.hasFloor():
                     self.renderMap.append(("floor", x, y))
 
                     # Shadows
-                    try:
-                        if self.map[x+1][y]==Tile.EMPTY:
-                            self.renderMap.append(("shadowpatchright", x, y))
-                    except IndexError:
+                    if self.GetTile(x+1,y)==Tile.EMPTY:
                         self.renderMap.append(("shadowpatchright", x, y))
 
-                    if self.map[x-1][y]==Tile.EMPTY:
+                    if self.GetTile(x-1,y)==Tile.EMPTY:
                         self.renderMap.append(("shadowpatchleft", x, y))
 
-                    try:
-                        if self.map[x][y+1]==Tile.EMPTY:
-                            self.renderMap.append(("shadowpatchbottom", x, y))
-                    except IndexError:
+                    if self.GetTile(x,y+1)==Tile.EMPTY:
                         self.renderMap.append(("shadowpatchbottom", x, y))
 
-                    if self.map[x][y-1]==Tile.EMPTY:
+                    if self.GetTile(x,y-1)==Tile.EMPTY:
                         self.renderMap.append(("shadowpatchtop", x, y))
 
                     # Walls
-                    if self.map[x][y-1]==Tile.EMPTY:
-                        left = False
-                        right = False
-                        try:
-                            left = self.map[x+1][y].hasFloor() and self.map[x+1][y-1] == Tile.EMPTY
-                        except IndexError:
-                            left = True
-                        right = self.map[x-1][y].hasFloor() and self.map[x-1][y-1] == Tile.EMPTY
+                    if self.GetTile(x,y-1)==Tile.EMPTY:
+                        left = self.GetTile(x+1,y).hasFloor() and self.GetTile(x+1,y-1) == Tile.EMPTY
+
+                        right = self.GetTile(x-1,y).hasFloor() and self.GetTile(x-1,y-1) == Tile.EMPTY
                         
                         if left and right:
-                            self.renderMap.append(("wall", x, y-1-4/RAW_TILE_SIZE))
+                            self.renderMap.append(("wall", x, y-1))
                         elif not left and not right:
-                            self.renderMap.append(("wallboth", x, y-1-4/RAW_TILE_SIZE))
+                            self.renderMap.append(("wallboth", x, y-1))
                         elif left:
-                            self.renderMap.append(("wallleft", x, y-1-4/RAW_TILE_SIZE))
+                            self.renderMap.append(("wallleft", x, y-1))
                         elif right:
-                            self.renderMap.append(("wallright", x, y-1-4/RAW_TILE_SIZE))
+                            self.renderMap.append(("wallright", x, y-1))
                     
                     if tile == Tile.CHEST:
                         self.renderMap.append(("closedchest", x, y))
@@ -241,75 +232,37 @@ class Map:
                         self.renderMap.append(("bandage", x, y))
                 # If empty
                 if tile == Tile.EMPTY:
-                    try:
-                        if self.map[x][y+1] == Tile.FLOOR:
-                            continue
-                    except IndexError:
-                        pass
-                    isWall = False
-                    try:
-                        if self.map[x][y+2] == Tile.FLOOR and self.map[x][y+1] == Tile.EMPTY:
-                            isWall = True
-                    except IndexError:
-                        pass
-                    if self.map[x][y-1] == Tile.FLOOR:
+                    if self.GetTile(x,y+1) == Tile.FLOOR:
+                        continue
+                    wallBelow=self.GetTile(x,y+2) == Tile.FLOOR and self.GetTile(x,y+1) == Tile.EMPTY
+                    wallRight=self.GetTile(x+1,y+1) == Tile.FLOOR and self.GetTile(x+1,y) == Tile.EMPTY
+                    wallLeft=self.GetTile(x-1,y+1) == Tile.FLOOR and self.GetTile(x-1,y) == Tile.EMPTY
+
+                    if self.GetTile(x,y-1) == Tile.FLOOR:
                         self.renderMap.append(("topedge", x, y))
-                    if self.map[x-1][y] == Tile.FLOOR:
+                    if self.GetTile(x-1,y) == Tile.FLOOR or wallLeft:
                         self.renderMap.append(("leftsideedge", x, y))
-                    try:
-                        if self.map[x+1][y] == Tile.FLOOR:
-                            self.renderMap.append(("rightsideedge", x, y))
-                    except IndexError:
-                        pass
+                    if self.GetTile(x+1, y) == Tile.FLOOR or wallRight:
+                        self.renderMap.append(("rightsideedge", x, y))
                     # Inner corner
-                    if self.map[x][y-1] == Tile.FLOOR and self.map[x-1][y] == Tile.FLOOR:
-                        self.renderMap.append(("innercornertopleft", x, y))
+                    if self.GetTile(x, y-1) == Tile.FLOOR and self.GetTile(x+1, y) == Tile.FLOOR:
+                        self.renderMap.append(("innercornerbottomleft", x, y))
 
-                    try:
-                        if self.map[x][y+1] == Tile.FLOOR and self.map[x-1][y] == Tile.FLOOR:
-                            self.renderMap.append(("innercornerbottomleft", x, y))
-                    except IndexError:
-                        pass
+                    if self.GetTile(x, y-1) == Tile.FLOOR and self.GetTile(x-1, y) == Tile.FLOOR:
+                        self.renderMap.append(("innercornerbottomright", x, y))
 
-                    try:
-                        if self.map[x][y-1] == Tile.FLOOR and self.map[x+1][y] == Tile.FLOOR:
-                            self.renderMap.append(("innercornertopright", x, y))
-                    except IndexError:
-                        pass
-
-                    try:
-                        if self.map[x][y+1] == Tile.FLOOR and self.map[x+1][y] == Tile.FLOOR:
-                            self.renderMap.append(("innercornerbottomright", x, y))
-                    except IndexError:
-                        pass
                     # Outer corner
-                    if self.map[x-1][y-1] == Tile.FLOOR and self.map[x-1][y] == Tile.EMPTY and self.map[x][y-1] == Tile.EMPTY:
+                    if wallRight:
                         self.renderMap.append(("outercornertopleft", x, y))
 
-                    try:
-                        if self.map[x-1][y+1] == Tile.FLOOR and self.map[x-1][y] == Tile.EMPTY and self.map[x][y+1] == Tile.EMPTY:
-                            self.renderMap.append(("outercornerbottomleft", x, y))
-                    except IndexError:
-                        pass
+                    if self.GetTile(x+1, y-1) == Tile.FLOOR and self.GetTile(x+1, y) == Tile.EMPTY and self.GetTile(x, y-1) == Tile.EMPTY:
+                        self.renderMap.append(("outercornerbottomleft", x, y))
 
-                    try:
-                        if self.map[x+1][y-1] == Tile.FLOOR and self.map[x+1][y] == Tile.EMPTY and self.map[x][y-1] == Tile.EMPTY:
-                            self.renderMap.append(("outercornertopright", x, y))
-                    except IndexError:
-                        pass
-
-                    try:
-                        if self.map[x+1][y+1] == Tile.FLOOR and self.map[x+1][y] == Tile.EMPTY and self.map[x][y+1] == Tile.EMPTY:
-                            self.renderMap.append(("outercornerbottomright", x, y))
-                    except IndexError:
-                        pass
-
-
-
-
-
-
-
+                    if wallLeft:
+                        self.renderMap.append(("outercornertopright", x, y))
+                        
+                    if self.GetTile(x-1, y-1) == Tile.FLOOR and self.GetTile(x-1, y) == Tile.EMPTY and self.GetTile(x, y-1) == Tile.EMPTY:
+                        self.renderMap.append(("outercornerbottomright", x, y))
         return self.renderMap
                 
 
@@ -351,7 +304,7 @@ class Player:
     def getCameraOffset(self) -> tuple[int, int]:
         return (-(self.x*TILE_SIZE-SCREEN_WIDTH/2), -(self.y*TILE_SIZE-SCREEN_HEIGHT/2))
     def Collide(self, x: float, y: float) -> bool:
-        return False
+        return any([self.currentMap.map[round(x)][round(y)]==0])
     def Move(self, x: float, y: float):
         if not self.Collide(x*self.speed, y*self.speed):
             self.x+=x*self.speed

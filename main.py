@@ -4,8 +4,9 @@ import sys
 import pygame
 from pygame.locals import *
 
-rawtileset: pygame.Surface = pygame.image.load('assets/tileset.png')
+rawtileset = pygame.image.load('assets/tileset.png')
 tileset: pygame.Surface = pygame.transform.scale(rawtileset, (rawtileset.get_size()[0]*WORLD_SIZE, rawtileset.get_size()[1]*WORLD_SIZE))
+del rawtileset
 
 hitSound: pygame.mixer.Sound = None
 killSound: pygame.mixer.Sound = None
@@ -19,10 +20,10 @@ tileRects: dict[str, pygame.Rect] = {
     "shadowpatchleft": pygame.Rect(0, TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "exit": pygame.Rect(TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "entrance": pygame.Rect(2*TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
-    "wallleft": pygame.Rect(3*TILE_SIZE, TILE_SIZE-4*WORLD_SIZE, TILE_SIZE, TILE_SIZE+4*WORLD_SIZE), # extra size?
-    "wall": pygame.Rect(4*TILE_SIZE, TILE_SIZE-4*WORLD_SIZE, TILE_SIZE, TILE_SIZE+4*WORLD_SIZE),
-    "wallright": pygame.Rect(5*TILE_SIZE, TILE_SIZE-4*WORLD_SIZE, TILE_SIZE, TILE_SIZE+4*WORLD_SIZE),
-    "wallboth": pygame.Rect(7*TILE_SIZE, 3*TILE_SIZE-4*WORLD_SIZE, TILE_SIZE, TILE_SIZE+4*WORLD_SIZE),
+    "wallleft": pygame.Rect(3*TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "wall": pygame.Rect(4*TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "wallright": pygame.Rect(5*TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "wallboth": pygame.Rect(7*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "goldsword": pygame.Rect(6*TILE_SIZE, 0, TILE_SIZE, TILE_SIZE*2),
     "ironsword": pygame.Rect(7*TILE_SIZE, 0, TILE_SIZE, TILE_SIZE*2),
     "closedchest": pygame.Rect(0, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
@@ -41,14 +42,12 @@ tileRects: dict[str, pygame.Rect] = {
     "rightsideedge": pygame.Rect(2*TILE_SIZE, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "leftsideedge": pygame.Rect(3*TILE_SIZE, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "topedge": pygame.Rect(4*TILE_SIZE, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
-    "innercornerbottomright": pygame.Rect(5*TILE_SIZE, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
-    "innercornerbottomleft": pygame.Rect(6*TILE_SIZE, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
-    "innercornertopright": pygame.Rect(5*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
-    "innercornertopleft": pygame.Rect(6*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
-    "outercornerbottomright": pygame.Rect(5*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
-    "outercornerbottomleft": pygame.Rect(6*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
-    "outercornertopright": pygame.Rect(5*TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
-    "outercornertopleft": pygame.Rect(6*TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "innercornerbottomleft": pygame.Rect(5*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "innercornerbottomright": pygame.Rect(6*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "outercornertopleft": pygame.Rect(5*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "outercornertopright": pygame.Rect(6*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "outercornerbottomleft": pygame.Rect(5*TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "outercornerbottomright": pygame.Rect(6*TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "greenenemy0": pygame.Rect(0, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "greenenemy1": pygame.Rect(TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "greenenemy2": pygame.Rect(2*TILE_SIZE, 5*TILE_SIZE, TILE_SIZE, TILE_SIZE),
@@ -120,8 +119,6 @@ class Dungeoneer:
 
         self.gameDisplay.fill((28,17,23))
         offset = self.player.getCameraOffset()
-        for i in range(len(tileRects)):
-            self.gameDisplay.blit(tileset, (offset[0]+i*TILE_SIZE, offset[1]), tileRects[list(tileRects)[i]])
         for tile in self.player.currentMap.renderMap:
             self.gameDisplay.blit(tileset, (offset[0]+tile[1]*TILE_SIZE, offset[1]+tile[2]*TILE_SIZE), tileRects[tile[0]])
         self.gameDisplay.blit(pygame.transform.flip(tileset, self.player.facing, False), (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), tileRects["mirroredplayer"] if self.player.facing else tileRects["player"])
