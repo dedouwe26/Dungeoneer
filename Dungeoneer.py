@@ -1,5 +1,5 @@
+import math
 import random
-
 
 # One tile: 16x16px
 # player view size: 16x12 tiles
@@ -59,18 +59,53 @@ class Seed:
     def Add(self, lvl: int):
         self.seed += lvl
         return self
-        
+
+class Enemy:
+    x: float
+    y: float
+    collisionMap: list[list[Tile]]
+    health: float
+    maxHealth: float
+    strength: float
+    speed: float
+    variation: str
+    currentTarget: tuple[float, float] = None
+    def __init__(self, collisionMap: list[list[Tile]], x: float, y: float, level: int, random: random.Random):
+        self.collisionMap = collisionMap
+        self.x = x
+        self.y = y
+
+        self.variation = random.choice(["greenenemy0", "greenenemy1", "greenenemy2", "greenenemy3", "greenenemy4", "greenenemy5",
+                                        "redenemy0", "redenemy1", "redenemy2", "redenemy3", "redenemy4", "redenemy5"])
+        self.strength = round(random.uniform(0.5, 1.1), 2)*level
+        self.speed = max(round(random.uniform(0.5, 1.1), 2)*level, 0.5)
+        self.maxHealth = round(random.uniform(0.5, 1.1), 2)*level
+        self.health = self.maxHealth
+    def Update(self, playerX: float, playerY: float):
+        if abs(math.hypot(self.x-playerX, self.y-playerY))<=4:
+                self.currentTarget = (playerX, playerY)
+        else:
+            self.currentTarget = [self.x, self.y]
+        dx = self.currentTarget[0]-self.x
+        dy = self.currentTarget[1]-self.y
+        magnitude = (dx**2 + dy**2)**.5
+        self.x = self.x+(dx/magnitude)*self.speed
+        self.y = self.y+(dy/magnitude)*self.speed
+    def Collide(self, x: float, y: float) -> bool:
+        pass
+
 class Map:
     renderMap: list[tuple[str, int, int]]
     mapSeed: Seed
     level: int
     rooms: list[tuple[int, int, int, int]] = []
-    enemys: list[tuple[float, float]] = []
+    enemys: list[Enemy] = []
     map: list[list[Tile]]
     startPos: tuple[float, float]
     endPos: tuple[float, float]
     bandages: list[tuple[int, int]] = []
     chestPos: tuple[int, int]
+    collisionMap: list[list[Tile]]
     chestState: int = 0 # 0 not opened 1 opened 2 looted
     def __init__(self, level: int, seed: Seed, enemyCount: int, bandageCount: int = 0):
         self.level = level
@@ -146,7 +181,9 @@ class Map:
                     for j in range(hallway_room_x, hallway_room_x + hallway_room_width):
                         for k in range(hallway_room_y, hallway_room_y + hallway_room_height):
                             self.map[j][k].type = Tile.FLOOR
-            
+
+        self.collisionMap = self.map
+
         # Calculate starting and ending positions
         self.startPos = (round(self.rooms[0][0]+self.rooms[0][2]/2)+.5, round(self.rooms[0][1]+self.rooms[0][3]/2)+.5)
         self.endPos = (round(self.rooms[len(self.rooms)-1][0]+self.rooms[len(self.rooms)-1][2]/2)+.5, round(self.rooms[len(self.rooms)-1][1]+self.rooms[len(self.rooms)-1][3]/2)+.5)
@@ -169,7 +206,7 @@ class Map:
         for i in range(enemyCount):
             position = rand.choice(floor_positions)
             floor_positions.remove(position)
-            self.enemys.append((float(position[0]), float(position[1])))
+            self.enemys.append(Enemy(self.collisionMap, float(position[0]), float(position[1]), self.level, rand))
 
         # Bandages (health dependent)
         self.bandages = rand.sample(floor_positions, min(bandageCount, len(floor_positions)))
@@ -265,18 +302,18 @@ class Map:
                         self.renderMap.append(("outercornerbottomright", x, y))
         return self.renderMap
                 
-
-
 class Player:
-    speed: float = 8
     facing: bool = False
     playerSeed: Seed
     isInShop: bool = True
     currentMap: Map
     optionsOpened: bool = False
     level: float = 0
-    maxHealth: float = 10
-    health: float = maxHealth
+    maxHealth: float = 10 # Blue
+    health: float = maxHealth 
+    speed: float = 4 # green
+    critchange: float = 0.05 # Yellow
+    strength: float # red
     x: float = 0
     y: float = 0
     def LoadData(self, path: str):
@@ -303,18 +340,24 @@ class Player:
         return 2 if self.health < self.maxHealth*.3 else 1 if self.health <= self.maxHealth*.5 else 0
     def getCameraOffset(self) -> tuple[int, int]:
         return (-(self.x*TILE_SIZE-SCREEN_WIDTH/2), -(self.y*TILE_SIZE-SCREEN_HEIGHT/2))
+    def Melee(self):
+        pass
     def Collide(self, x: float, y: float) -> bool:
-        return any([self.currentMap.map[round(x)][round(y)]==0])
+        return self.currentMap.GetTile(math.floor(x+1.5/RAW_TILE_SIZE), math.floor(y+7.5/RAW_TILE_SIZE)) in [Tile.EMPTY, Tile.CHEST]
     def Move(self, x: float, y: float):
-        if not self.Collide(x*self.speed, y*self.speed):
+        if not self.Collide(self.x+x*self.speed, self.y+y*self.speed):
             self.x+=x*self.speed
             self.y+=y*self.speed
-        self.facing = True if x < 0 else False
-    def NextLevel(self):
+        if x!=0:
+            self.facing = True if x < 0 else False
+    def NextLevel(self) -> bool:
+        if len(self.currentMap.enemys)!=0:
+            return False
         self.level+=1
         self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
         self.x = self.currentMap.startPos[0]
         self.y = self.currentMap.startPos[1]
+        return True
 
 if __name__ == "__main__":
     print(f"Dungeoneer\n{'  '.join([Tile.TYPES[key]+' = '+key for key in Tile.TYPES])}")

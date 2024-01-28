@@ -115,13 +115,22 @@ class Dungeoneer:
             if self.moveRight:
                 velocity[0]+=deltaTime
             self.player.Move(velocity[0], velocity[1])
-            # print(self.player.x, self.player.y, self.player.getCameraOffset())
+        
+        for enemy in self.player.currentMap.enemys:
+            enemy.Update(self.player.x, self.player.y)
 
         self.gameDisplay.fill((28,17,23))
+
         offset = self.player.getCameraOffset()
+
         for tile in self.player.currentMap.renderMap:
             self.gameDisplay.blit(tileset, (offset[0]+tile[1]*TILE_SIZE, offset[1]+tile[2]*TILE_SIZE), tileRects[tile[0]])
+        
+        for enemy in self.player.currentMap.enemys:
+            self.gameDisplay.blit(tileset, (offset[0]+enemy.x*TILE_SIZE, offset[1]+enemy.y*TILE_SIZE), tileRects[enemy.variation])
+
         self.gameDisplay.blit(pygame.transform.flip(tileset, self.player.facing, False), (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), tileRects["mirroredplayer"] if self.player.facing else tileRects["player"])
+
         pygame.display.update()
         self.FPS.tick(60)
     def exit(self):
