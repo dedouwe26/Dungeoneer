@@ -44,10 +44,8 @@ class Tile:
 
 class Seed:
     seed: int
-    def __init__(self, seed: int = random.randint(0,1099511627775), seedKey: str = None):
-        if seedKey==None:
-            self.seed = seed
-        elif seedKey!="":
+    def __init__(self, seed: int = random.randint(0,1099511627775), seedKey: str = ""):
+        if seedKey!="":
             self.seed = int(seedKey.removeprefix("&"), 16)
         else:
             self.seed = seed
@@ -68,31 +66,37 @@ class Enemy:
     maxHealth: float
     strength: float
     speed: float
+    facing: bool = False
     variation: str
-    currentTarget: tuple[float, float] = None
     def __init__(self, collisionMap: list[list[Tile]], x: float, y: float, level: int, random: random.Random):
         self.collisionMap = collisionMap
         self.x = x
         self.y = y
-
         self.variation = random.choice(["greenenemy0", "greenenemy1", "greenenemy2", "greenenemy3", "greenenemy4", "greenenemy5",
                                         "redenemy0", "redenemy1", "redenemy2", "redenemy3", "redenemy4", "redenemy5"])
         self.strength = round(random.uniform(0.5, 1.1), 2)*level
-        self.speed = max(round(random.uniform(0.5, 1.1), 2)*level, 0.5)
+        self.speed = max(min(round(random.uniform(0.3, 0.8), 2)*level, 2.5), 0.5)
         self.maxHealth = round(random.uniform(0.5, 1.1), 2)*level
         self.health = self.maxHealth
-    def Update(self, playerX: float, playerY: float):
+    def Update(self, playerX: float, playerY: float, deltaTime: float) -> bool:
+        # if abs(math.hypot(self.x-playerX, self.y-playerY))<=1:
+        #     return True
         if abs(math.hypot(self.x-playerX, self.y-playerY))<=4:
-                self.currentTarget = (playerX, playerY)
-        else:
-            self.currentTarget = [self.x, self.y]
-        dx = self.currentTarget[0]-self.x
-        dy = self.currentTarget[1]-self.y
-        magnitude = (dx**2 + dy**2)**.5
-        self.x = self.x+(dx/magnitude)*self.speed
-        self.y = self.y+(dy/magnitude)*self.speed
+            dx = playerX - self.x
+            dy = playerY - self.y
+            magnitude = (dx**2 + dy**2)**0.5
+            if magnitude > 0:
+                offsetX = (dx / magnitude) * self.speed * deltaTime
+                offsetY = (dy / magnitude) * self.speed * deltaTime
+                if not self.Collide(self.x+offsetX, self.y+offsetY):
+                    self.x += offsetX
+                    self.y += offsetY
+                    self.facing = offsetX > 0
+        return False
     def Collide(self, x: float, y: float) -> bool:
-        pass
+        x = math.floor(x+1.5/RAW_TILE_SIZE)
+        y = math.floor(y+7.5/RAW_TILE_SIZE)
+        return (self.collisionMap[x][y] in [Tile.EMPTY, Tile.CHEST]) if 0 <= x < len(self.collisionMap) and 0 <= y < len(self.collisionMap[0]) else False
 
 class Map:
     renderMap: list[tuple[str, int, int]]
@@ -206,7 +210,7 @@ class Map:
         for i in range(enemyCount):
             position = rand.choice(floor_positions)
             floor_positions.remove(position)
-            self.enemys.append(Enemy(self.collisionMap, float(position[0]), float(position[1]), self.level, rand))
+            self.enemys.append(Enemy(self.collisionMap, float(position[0]), float(position[1]), self.level+1, rand))
 
         # Bandages (health dependent)
         self.bandages = rand.sample(floor_positions, min(bandageCount, len(floor_positions)))
@@ -216,17 +220,17 @@ class Map:
 
         self.GenerateRenderMap()
     def GetTile(self, x: int, y: int) -> Tile:
-        return Tile(self.map[x][y]) if len(self.map) > x >= 0 and len(self.map[0]) > y >= 0 else Tile(Tile.EMPTY)
+        return self.map[x][y] if len(self.map) > x >= 0 and len(self.map[0]) > y >= 0 else Tile(Tile.EMPTY)
     def toMap(self) -> str:
         tempmap = self.map
         for enemy in self.enemys:
-            tempmap[round(enemy[0])][round(enemy[1])].type = Tile.ENEMY
+            tempmap[round(enemy.x)][round(enemy.y)].type = Tile.ENEMY
         return "\n".join([" ".join([str(tile) for tile in row]) for row in tempmap])
     def GenerateRenderMap(self):
         self.renderMap = []
-        for x in range(len(self.map)):
-            for y in range(len(self.map[x])):
-                tile = self.map[x][y]
+        for x in range(-1, MAP_SIZE+1):
+            for y in range(-1, MAP_SIZE+1):
+                tile = self.GetTile(x,y)
                 # If floor
                 if tile.hasFloor():
                     self.renderMap.append(("floor", x, y))
@@ -269,36 +273,35 @@ class Map:
                         self.renderMap.append(("bandage", x, y))
                 # If empty
                 if tile == Tile.EMPTY:
-                    if self.GetTile(x,y+1) == Tile.FLOOR:
+                    if self.GetTile(x,y+1).hasFloor():
                         continue
-                    wallBelow=self.GetTile(x,y+2) == Tile.FLOOR and self.GetTile(x,y+1) == Tile.EMPTY
-                    wallRight=self.GetTile(x+1,y+1) == Tile.FLOOR and self.GetTile(x+1,y) == Tile.EMPTY
-                    wallLeft=self.GetTile(x-1,y+1) == Tile.FLOOR and self.GetTile(x-1,y) == Tile.EMPTY
+                    wallRight=self.GetTile(x+1,y+1).hasFloor() and self.GetTile(x+1,y) == Tile.EMPTY
+                    wallLeft=self.GetTile(x-1,y+1).hasFloor() and self.GetTile(x-1,y) == Tile.EMPTY
 
-                    if self.GetTile(x,y-1) == Tile.FLOOR:
+                    if self.GetTile(x,y-1).hasFloor():
                         self.renderMap.append(("topedge", x, y))
-                    if self.GetTile(x-1,y) == Tile.FLOOR or wallLeft:
+                    if self.GetTile(x-1,y).hasFloor() or wallLeft:
                         self.renderMap.append(("leftsideedge", x, y))
-                    if self.GetTile(x+1, y) == Tile.FLOOR or wallRight:
+                    if self.GetTile(x+1, y).hasFloor() or wallRight:
                         self.renderMap.append(("rightsideedge", x, y))
                     # Inner corner
-                    if self.GetTile(x, y-1) == Tile.FLOOR and self.GetTile(x+1, y) == Tile.FLOOR:
+                    if self.GetTile(x, y-1).hasFloor() and self.GetTile(x+1, y).hasFloor():
                         self.renderMap.append(("innercornerbottomleft", x, y))
 
-                    if self.GetTile(x, y-1) == Tile.FLOOR and self.GetTile(x-1, y) == Tile.FLOOR:
+                    if self.GetTile(x, y-1).hasFloor() and self.GetTile(x-1, y).hasFloor():
                         self.renderMap.append(("innercornerbottomright", x, y))
 
                     # Outer corner
                     if wallRight:
                         self.renderMap.append(("outercornertopleft", x, y))
 
-                    if self.GetTile(x+1, y-1) == Tile.FLOOR and self.GetTile(x+1, y) == Tile.EMPTY and self.GetTile(x, y-1) == Tile.EMPTY:
+                    if self.GetTile(x+1, y-1).hasFloor() and self.GetTile(x+1, y) == Tile.EMPTY and self.GetTile(x, y-1) == Tile.EMPTY:
                         self.renderMap.append(("outercornerbottomleft", x, y))
 
                     if wallLeft:
                         self.renderMap.append(("outercornertopright", x, y))
                         
-                    if self.GetTile(x-1, y-1) == Tile.FLOOR and self.GetTile(x-1, y) == Tile.EMPTY and self.GetTile(x, y-1) == Tile.EMPTY:
+                    if self.GetTile(x-1, y-1).hasFloor() and self.GetTile(x-1, y) == Tile.EMPTY and self.GetTile(x, y-1) == Tile.EMPTY:
                         self.renderMap.append(("outercornerbottomright", x, y))
         return self.renderMap
                 
@@ -308,7 +311,7 @@ class Player:
     isInShop: bool = True
     currentMap: Map
     optionsOpened: bool = False
-    level: float = 0
+    level: int = 0
     maxHealth: float = 10 # Blue
     health: float = maxHealth 
     speed: float = 4 # green
@@ -319,7 +322,7 @@ class Player:
     def LoadData(self, path: str):
         with open(path, "r") as file:
             lines = file.readlines()
-            self.level = float(lines[0])
+            self.level = int(lines[0])
             self.isInShop = bool(lines[1])
             self.playerSeed = Seed(0, lines[2])
             self.x = float(lines[3])
@@ -338,7 +341,7 @@ class Player:
     def AmountBandages(self) -> int:
         # health < 30% : 2, health <= 50% : 1, health > 50% : 0
         return 2 if self.health < self.maxHealth*.3 else 1 if self.health <= self.maxHealth*.5 else 0
-    def getCameraOffset(self) -> tuple[int, int]:
+    def getCameraOffset(self) -> tuple[float, float]:
         return (-(self.x*TILE_SIZE-SCREEN_WIDTH/2), -(self.y*TILE_SIZE-SCREEN_HEIGHT/2))
     def Melee(self):
         pass

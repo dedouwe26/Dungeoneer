@@ -14,12 +14,12 @@ HALLWAY_ROOM_MAX_SIZE = 8
 class Map:
     rand: random.Random
     rooms: list[tuple[int, int, int, int]] = []
-    enemys = list[tuple[float, float]]
-    map = list[list[str]]
+    enemys: list[tuple[float, float]]
+    map: list[list[str]]
     startPos: tuple[float, float]
     endPos: tuple[float, float]
-    bandages = list[tuple[int, int]]
-    chestPos = tuple[int, int]
+    bandages: list[tuple[int, int]]
+    chestPos: tuple[int, int]
     def __init__(self, rand: random.Random, enemyCount: int, bandageCount: int = 0):
         self.rand = rand
         self.Generate(enemyCount, bandageCount)

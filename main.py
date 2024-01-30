@@ -7,11 +7,12 @@ from pygame.locals import *
 rawtileset = pygame.image.load('assets/tileset.png')
 tileset: pygame.Surface = pygame.transform.scale(rawtileset, (rawtileset.get_size()[0]*WORLD_SIZE, rawtileset.get_size()[1]*WORLD_SIZE))
 del rawtileset
+mirroredTileset: pygame.Surface = pygame.transform.flip(tileset, True, False)
 
-hitSound: pygame.mixer.Sound = None
-killSound: pygame.mixer.Sound = None
-levelUpSound: pygame.mixer.Sound = None
-pickUpSound: pygame.mixer.Sound = None
+hitSound: pygame.mixer.Sound
+killSound: pygame.mixer.Sound
+levelUpSound: pygame.mixer.Sound
+pickUpSound: pygame.mixer.Sound
 
 tileRects: dict[str, pygame.Rect] = {
     "shadowpatchbottom": pygame.Rect(0, 0, TILE_SIZE, TILE_SIZE),
@@ -31,7 +32,7 @@ tileRects: dict[str, pygame.Rect] = {
     "fullchest": pygame.Rect(0, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "armoredplayer": pygame.Rect(TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "player": pygame.Rect(TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
-    "mirroredarmoredplayer": pygame.Rect(tileset.get_size()[0]-2*TILE_SIZE, 3*TILE_SIZE, -TILE_SIZE, TILE_SIZE),
+    "mirroredarmoredplayer": pygame.Rect(tileset.get_size()[0]-2*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "mirroredplayer": pygame.Rect(tileset.get_size()[0]-2*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "redpotion": pygame.Rect(2*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "greenpotion": pygame.Rect(3*TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
@@ -86,11 +87,11 @@ class Dungeoneer:
         killSound = pygame.mixer.Sound('assets/kill.wav')
         levelUpSound = pygame.mixer.Sound('assets/levelup.wav')
         pickUpSound = pygame.mixer.Sound('assets/pickup.wav')
-        self.gameDisplay = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT)) # Gameshell size.
+        self.gameDisplay = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption('Dungeoneer') 
         pygame.display.set_icon(LOGO_IMG)
         self.FPS = pygame.time.Clock()
-        self.FPS.tick(60) # The refresh rate of gameshell.
+        self.FPS.tick(60)
         self.lastTime = pygame.time.get_ticks()
         while self.isRunning:
             for event in pygame.event.get():
@@ -117,7 +118,7 @@ class Dungeoneer:
             self.player.Move(velocity[0], velocity[1])
         
         for enemy in self.player.currentMap.enemys:
-            enemy.Update(self.player.x, self.player.y)
+            enemy.Update(self.player.x, self.player.y, deltaTime)
 
         self.gameDisplay.fill((28,17,23))
 
@@ -127,9 +128,9 @@ class Dungeoneer:
             self.gameDisplay.blit(tileset, (offset[0]+tile[1]*TILE_SIZE, offset[1]+tile[2]*TILE_SIZE), tileRects[tile[0]])
         
         for enemy in self.player.currentMap.enemys:
-            self.gameDisplay.blit(tileset, (offset[0]+enemy.x*TILE_SIZE, offset[1]+enemy.y*TILE_SIZE), tileRects[enemy.variation])
+            self.gameDisplay.blit(mirroredTileset if enemy.facing else tileset, (offset[0]+enemy.x*TILE_SIZE, offset[1]+enemy.y*TILE_SIZE), tileRects[enemy.variation] if not enemy.facing else pygame.Rect(tileset.get_size()[0]-tileRects[enemy.variation].left, tileRects[enemy.variation].top, tileRects[enemy.variation].width, tileRects[enemy.variation].height))
 
-        self.gameDisplay.blit(pygame.transform.flip(tileset, self.player.facing, False), (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), tileRects["mirroredplayer"] if self.player.facing else tileRects["player"])
+        self.gameDisplay.blit(mirroredTileset if self.player.facing else tileset, (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), tileRects["mirroredplayer"] if self.player.facing else tileRects["player"])
 
         pygame.display.update()
         self.FPS.tick(60)
