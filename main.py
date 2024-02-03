@@ -1,4 +1,3 @@
-from shutil import move
 from Dungeoneer import *
 import sys
 import pygame
@@ -9,12 +8,32 @@ tileset: pygame.Surface = pygame.transform.scale(rawtileset, (rawtileset.get_siz
 del rawtileset
 mirroredTileset: pygame.Surface = pygame.transform.flip(tileset, True, False)
 
-hitSound: pygame.mixer.Sound
-killSound: pygame.mixer.Sound
-levelUpSound: pygame.mixer.Sound
-pickUpSound: pygame.mixer.Sound
+mapTileset = pygame.image.load('assets/maptileset.png')
+
+mapTileRects: dict[str, pygame.Rect] = {
+    "floor": pygame.Rect(MAP_TILE_SIZE, 0, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "player": pygame.Rect(2*MAP_TILE_SIZE, 0, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "enemy": pygame.Rect(3*MAP_TILE_SIZE, 0, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "exit": pygame.Rect(4*MAP_TILE_SIZE, 0, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "chest": pygame.Rect(5*MAP_TILE_SIZE, 0, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "bandage": pygame.Rect(4*MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "entrance": pygame.Rect(5*MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "bottomedge": pygame.Rect(0, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "rightedge": pygame.Rect(MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "leftedge": pygame.Rect(0, 2*MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "topedge": pygame.Rect(MAP_TILE_SIZE, 2*MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "topleftcorner": pygame.Rect(2*MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "toprightcorner": pygame.Rect(3*MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "bottomleftcorner": pygame.Rect(2*MAP_TILE_SIZE, 2*MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "bottomrightcorner": pygame.Rect(3*MAP_TILE_SIZE, 2*MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+}
 
 tileRects: dict[str, pygame.Rect] = {
+    "healthbackground": pygame.Rect(5*TILE_SIZE, 2*TILE_SIZE, TILE_SIZE*3, TILE_SIZE/2),
+    "healthforeground": pygame.Rect(5*TILE_SIZE, 2*TILE_SIZE+TILE_SIZE/2, TILE_SIZE*3, TILE_SIZE/2),
+    "fullhealth": pygame.Rect(3*TILE_SIZE, 0, TILE_SIZE*3, TILE_SIZE/2),
+    "health": pygame.Rect(3*TILE_SIZE, TILE_SIZE/2, TILE_SIZE*3, TILE_SIZE/2),
+
     "shadowpatchbottom": pygame.Rect(0, 0, TILE_SIZE, TILE_SIZE),
     "shadowpatchtop": pygame.Rect(TILE_SIZE, 0, TILE_SIZE, TILE_SIZE),
     "shadowpatchright": pygame.Rect(2*TILE_SIZE, 0, TILE_SIZE, TILE_SIZE),
@@ -68,8 +87,19 @@ LOGO_IMG = pygame.image.load('assets/logo.png')
 # v move down
 # < move left
 # > move right
+# (space) SELECT open / close map
+# u X Melee
+# k B Range
+# j A Interact
+# (enter) START Menu
+
 
 class Dungeoneer:
+    hitSound: pygame.mixer.Sound
+    killSound: pygame.mixer.Sound
+    levelUpSound: pygame.mixer.Sound
+    pickUpSound: pygame.mixer.Sound
+    font: pygame.font.Font
     moveUp: bool = False
     moveDown: bool = False
     moveLeft: bool = False
@@ -79,14 +109,17 @@ class Dungeoneer:
     player: Player
     gameDisplay: pygame.Surface
     FPS: pygame.time.Clock
+    deathAlphaLevel: float = 0
+    mapOffset: tuple[float, float] = [0, 0]
     def __init__(self):
         self.player = Player(Seed())
         pygame.init()
         pygame.mixer.init()
-        hitSound = pygame.mixer.Sound("assets/kill.wav")
-        killSound = pygame.mixer.Sound('assets/kill.wav')
-        levelUpSound = pygame.mixer.Sound('assets/levelup.wav')
-        pickUpSound = pygame.mixer.Sound('assets/pickup.wav')
+        self.font = pygame.font.Font("assets/PublicPixel.ttf", 9*WORLD_SIZE)
+        self.hitSound = pygame.mixer.Sound("assets/hit.wav")
+        self.killSound = pygame.mixer.Sound('assets/kill.wav')
+        self.levelUpSound = pygame.mixer.Sound('assets/levelup.wav')
+        self.pickUpSound = pygame.mixer.Sound('assets/pickup.wav')
         self.gameDisplay = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption('Dungeoneer') 
         pygame.display.set_icon(LOGO_IMG)
@@ -105,32 +138,83 @@ class Dungeoneer:
             self.update(deltaTime)
     def update(self, deltaTime):
         if self.moveUp or self.moveDown or self.moveLeft or self.moveRight:
+            if self.player.hasMapOpen:
+                self.mapOffset = [self.mapOffset[0] + (8*MAP_TILE_SIZE if self.moveLeft else -8*MAP_TILE_SIZE if self.moveRight else 0) * deltaTime, self.mapOffset[1] + (8*MAP_TILE_SIZE if self.moveUp else -8*MAP_TILE_SIZE if self.moveDown else 0) * deltaTime]
+            else:
+                velocity = [0, 0]
+                if self.moveUp:
+                    velocity[1]-=deltaTime
+                if self.moveDown:
+                    velocity[1]+=deltaTime
+                if self.moveLeft:
+                    velocity[0]-=deltaTime
+                if self.moveRight:
+                    velocity[0]+=deltaTime
+                self.player.Move(velocity[0], velocity[1])
+        if not self.player.dead:
+            for enemy in self.player.currentMap.enemys:
+                if enemy.Update(self.player.x-.5, self.player.y-.5, deltaTime):
+                    pygame.mixer.Sound.play(self.hitSound)
+                    if self.player.Hit(enemy.strength):
+                        pygame.mixer.Sound.play(self.killSound)
+
+        self.gameDisplay.fill((219, 207, 151) if self.player.hasMapOpen else (28,17,23))
+
+        if self.player.hasMapOpen and not self.player.dead:
+            for tile in self.player.currentMap.GenerateMapRenderMap(self.player.x, self.player.y):
+                self.gameDisplay.blit(mapTileset, (self.mapOffset[0]+tile[1]*MAP_TILE_SIZE, self.mapOffset[1]+tile[2]*MAP_TILE_SIZE), mapTileRects[tile[0]])
+        elif not (self.player.dead and self.deathAlphaLevel == 255):
+            offset = self.player.getCameraOffset()
+
+            for tile in self.player.currentMap.renderMap:
+                self.gameDisplay.blit(tileset, (offset[0]+tile[1]*TILE_SIZE, offset[1]+tile[2]*TILE_SIZE), tileRects[tile[0]])
             
-            velocity = [0, 0]
-            if self.moveUp:
-                velocity[1]-=deltaTime
-            if self.moveDown:
-                velocity[1]+=deltaTime
-            if self.moveLeft:
-                velocity[0]-=deltaTime
-            if self.moveRight:
-                velocity[0]+=deltaTime
-            self.player.Move(velocity[0], velocity[1])
-        
-        for enemy in self.player.currentMap.enemys:
-            enemy.Update(self.player.x, self.player.y, deltaTime)
+            for enemy in self.player.currentMap.enemys:
+                self.gameDisplay.blit(mirroredTileset if enemy.facing else tileset, (offset[0]+enemy.x*TILE_SIZE, offset[1]+enemy.y*TILE_SIZE), tileRects[enemy.variation] if not enemy.facing else pygame.Rect(tileset.get_size()[0]-tileRects[enemy.variation].left-TILE_SIZE, tileRects[enemy.variation].top, tileRects[enemy.variation].width, tileRects[enemy.variation].height))
 
-        self.gameDisplay.fill((28,17,23))
+            if not self.player.dead:
+                self.gameDisplay.blit(mirroredTileset if self.player.facing else tileset, (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), tileRects["mirroredplayer"] if self.player.facing else tileRects["player"])
+            del offset
 
-        offset = self.player.getCameraOffset()
+            # draw UI
+            # Health
+            self.gameDisplay.blit(tileset, (0, SCREEN_HEIGHT-TILE_SIZE/2), tileRects["healthbackground"])
 
-        for tile in self.player.currentMap.renderMap:
-            self.gameDisplay.blit(tileset, (offset[0]+tile[1]*TILE_SIZE, offset[1]+tile[2]*TILE_SIZE), tileRects[tile[0]])
-        
-        for enemy in self.player.currentMap.enemys:
-            self.gameDisplay.blit(mirroredTileset if enemy.facing else tileset, (offset[0]+enemy.x*TILE_SIZE, offset[1]+enemy.y*TILE_SIZE), tileRects[enemy.variation] if not enemy.facing else pygame.Rect(tileset.get_size()[0]-tileRects[enemy.variation].left, tileRects[enemy.variation].top, tileRects[enemy.variation].width, tileRects[enemy.variation].height))
+            percentageHealth = self.player.health / self.player.maxHealth
 
-        self.gameDisplay.blit(mirroredTileset if self.player.facing else tileset, (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), tileRects["mirroredplayer"] if self.player.facing else tileRects["player"])
+            if percentageHealth >= 1:
+                self.gameDisplay.blit(tileset, (0, SCREEN_HEIGHT-TILE_SIZE/2), tileRects["fullhealth"])
+            else:
+                self.gameDisplay.blit(tileset, ((percentageHealth*46-46)*WORLD_SIZE, SCREEN_HEIGHT-TILE_SIZE/2), tileRects["health"])
+
+            self.gameDisplay.blit(tileset, (0, SCREEN_HEIGHT-TILE_SIZE/2), tileRects["healthforeground"])
+
+            # Level
+            text = self.font.render(str(self.player.level), False, (180, 207, 30))
+            rect = text.get_rect()
+            rect.bottom = SCREEN_HEIGHT
+            rect.left = 3*TILE_SIZE+(3*WORLD_SIZE)
+            self.gameDisplay.blit(text, rect)
+
+        if self.player.dead:
+            self.deathAlphaLevel = min(255, self.deathAlphaLevel+deltaTime*30)
+            alphaSurf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            alphaSurf.set_alpha(self.deathAlphaLevel)
+            alphaSurf.fill((0,0,0))
+            self.gameDisplay.blit(alphaSurf, (0,0), pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+            text = self.font.render("Game Over", False, (182, 47, 49))
+            rect = text.get_rect()
+            rect.centerx = SCREEN_WIDTH/2
+            rect.bottom = SCREEN_HEIGHT/2
+            self.gameDisplay.blit(text, rect)
+
+            text = self.font.render("You've reached level "+str(self.player.level), False, (204, 170, 68))
+            text.set_alpha(self.deathAlphaLevel/100*255)
+            rect = text.get_rect()
+            rect.centerx = SCREEN_WIDTH/2
+            rect.top = SCREEN_HEIGHT/2
+            self.gameDisplay.blit(text, rect)
+
 
         pygame.display.update()
         self.FPS.tick(60)
@@ -148,6 +232,16 @@ class Dungeoneer:
                 self.moveLeft = True
             elif event.dict["key"]==K_RIGHT:
                 self.moveRight = True
+            elif event.dict["key"]==K_SPACE:
+                self.player.hasMapOpen = not self.player.hasMapOpen
+                if self.player.hasMapOpen:
+                    self.mapOffset = [-(round(self.player.x)*MAP_TILE_SIZE)+SCREEN_WIDTH/2, -(round(self.player.y)*MAP_TILE_SIZE)+SCREEN_HEIGHT/2]
+            elif event.dict["key"]==K_u:
+                hit = self.player.Melee()
+                if hit[0]:
+                    pygame.mixer.Sound.play(self.hitSound)
+                if hit[1]:
+                    pygame.mixer.Sound.play(self.killSound)
         elif event.type == KEYUP:
             if event.dict["key"]==K_UP:
                 self.moveUp = False

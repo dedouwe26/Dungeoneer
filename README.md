@@ -22,7 +22,9 @@ Just like the bandages.
 {x: float}      <br>
 {y: float}      <br>
 {health: float} <br>
-{maxHealth: float}
+{maxHealth: float} <br>
+{critchange: float} <br>
+{speed: float}  <br>
 </code>         <br>
 <b>Example:</b> <br>
 <code>
@@ -32,4 +34,7 @@ $843E38FFD0     <br>
 10              <br>
 22.4            <br>
 3.1             <br>
+10              <br>
+0.05            <br>
+4               <br>
 </code>

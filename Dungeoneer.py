@@ -6,9 +6,10 @@ import random
 # screen ratio: (4/3)
 SCREEN_WIDTH = 800 # 320
 SCREEN_HEIGHT = 600 # 240
-WORLD_SIZE = 3
+WORLD_SIZE = 3 # 2
 RAW_TILE_SIZE = 16
 TILE_SIZE = RAW_TILE_SIZE*WORLD_SIZE
+MAP_TILE_SIZE = 8
 
 
 # Generator settings
@@ -68,6 +69,7 @@ class Enemy:
     speed: float
     facing: bool = False
     variation: str
+    cooldown: float = 0
     def __init__(self, collisionMap: list[list[Tile]], x: float, y: float, level: int, random: random.Random):
         self.collisionMap = collisionMap
         self.x = x
@@ -79,8 +81,12 @@ class Enemy:
         self.maxHealth = round(random.uniform(0.5, 1.1), 2)*level
         self.health = self.maxHealth
     def Update(self, playerX: float, playerY: float, deltaTime: float) -> bool:
-        # if abs(math.hypot(self.x-playerX, self.y-playerY))<=1:
-        #     return True
+        if abs(math.hypot(self.x-playerX, self.y-playerY))<=0.7:
+            if self.cooldown <= 0:
+                self.cooldown = 1
+                return True
+            self.cooldown -= deltaTime
+            return False
         if abs(math.hypot(self.x-playerX, self.y-playerY))<=4:
             dx = playerX - self.x
             dy = playerY - self.y
@@ -93,9 +99,12 @@ class Enemy:
                     self.y += offsetY
                     self.facing = offsetX > 0
         return False
+    def Hit(self, damage: float) -> bool:
+        self.health -= damage
+        return self.health <= 0
     def Collide(self, x: float, y: float) -> bool:
         x = math.floor(x+1.5/RAW_TILE_SIZE)
-        y = math.floor(y+7.5/RAW_TILE_SIZE)
+        y = math.floor(y+1+7.5/RAW_TILE_SIZE)
         return (self.collisionMap[x][y] in [Tile.EMPTY, Tile.CHEST]) if 0 <= x < len(self.collisionMap) and 0 <= y < len(self.collisionMap[0]) else False
 
 class Map:
@@ -115,7 +124,6 @@ class Map:
         self.level = level
         self.mapSeed = seed.Add(self.level)
         self.Generate(enemyCount, bandageCount)
-
     def Generate(self, enemyCount: int, bandageCount: int):
         self.map = [[Tile(Tile.EMPTY) for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
         rand: random.Random = self.mapSeed.GetRandom()
@@ -218,6 +226,7 @@ class Map:
         for position in self.bandages:
             self.map[position[0]][position[1]].type = Tile.BANDAGE
 
+        # Generate render map
         self.GenerateRenderMap()
     def GetTile(self, x: int, y: int) -> Tile:
         return self.map[x][y] if len(self.map) > x >= 0 and len(self.map[0]) > y >= 0 else Tile(Tile.EMPTY)
@@ -226,6 +235,45 @@ class Map:
         for enemy in self.enemys:
             tempmap[round(enemy.x)][round(enemy.y)].type = Tile.ENEMY
         return "\n".join([" ".join([str(tile) for tile in row]) for row in tempmap])
+    def GenerateMapRenderMap(self, playerX: float, playerY: float) -> list[tuple[str, int, int]]:
+        renderMap = []
+        for x in range(-1, MAP_SIZE+1):
+            for y in range(-1, MAP_SIZE+1):
+                tile = self.GetTile(x,y)
+                # If floor
+                if tile.hasFloor():
+                    renderMap.append(("floor", x, y))
+                    
+                    if tile==Tile.ENTRANCE:
+                        renderMap.append(("entrance", x, y))
+                    if tile==Tile.EXIT:
+                        renderMap.append(("exit", x, y))
+                    if tile==Tile.CHEST:
+                        renderMap.append(("chest", x, y))
+                    if tile==Tile.BANDAGE:
+                        renderMap.append(("bandage", x, y))
+                if tile==Tile.EMPTY:
+                    if self.GetTile(x+1,y).hasFloor():
+                        renderMap.append(("leftedge", x, y))
+                    if self.GetTile(x-1,y).hasFloor():
+                        renderMap.append(("rightedge", x, y))
+                    if self.GetTile(x,y+1).hasFloor():
+                        renderMap.append(("topedge", x, y))
+                    if self.GetTile(x,y-1).hasFloor():
+                        renderMap.append(("bottomedge", x, y))
+
+                    if self.GetTile(x+1,y+1).hasFloor() and self.GetTile(x+1,y)==Tile.EMPTY and self.GetTile(x,y+1)==Tile.EMPTY:
+                        renderMap.append(("topleftcorner", x, y))
+                    if self.GetTile(x-1,y+1).hasFloor() and self.GetTile(x-1,y)==Tile.EMPTY and self.GetTile(x,y+1)==Tile.EMPTY:
+                        renderMap.append(("toprightcorner", x, y))
+                    if self.GetTile(x-1,y-1).hasFloor() and self.GetTile(x-1,y)==Tile.EMPTY and self.GetTile(x,y-1)==Tile.EMPTY:
+                        renderMap.append(("bottomrightcorner", x, y))
+                    if self.GetTile(x+1,y-1).hasFloor() and self.GetTile(x+1,y)==Tile.EMPTY and self.GetTile(x,y-1)==Tile.EMPTY:
+                        renderMap.append(("bottomleftcorner", x, y))
+        renderMap.append(("player", math.floor(playerX), math.floor(playerY)))
+        for enemy in self.enemys:
+            renderMap.append(("enemy", math.floor(enemy.x), math.floor(enemy.y)))
+        return renderMap
     def GenerateRenderMap(self):
         self.renderMap = []
         for x in range(-1, MAP_SIZE+1):
@@ -264,7 +312,7 @@ class Map:
                             self.renderMap.append(("wallright", x, y-1))
                     
                     if tile == Tile.CHEST:
-                        self.renderMap.append(("closedchest", x, y))
+                        self.renderMap.append(("closedchest" if self.chestState == 0 else "fullchest" if self.chestState == 1 else "emptychest", x, y))
                     elif tile == Tile.ENTRANCE:
                         self.renderMap.append(("entrance", x, y))
                     elif tile == Tile.EXIT:
@@ -308,7 +356,7 @@ class Map:
 class Player:
     facing: bool = False
     playerSeed: Seed
-    isInShop: bool = True
+    hasMapOpen: bool = False
     currentMap: Map
     optionsOpened: bool = False
     level: int = 0
@@ -316,9 +364,10 @@ class Player:
     health: float = maxHealth 
     speed: float = 4 # green
     critchange: float = 0.05 # Yellow
-    strength: float # red
+    strength: float = 1 # red
     x: float = 0
     y: float = 0
+    dead: bool = False
     def LoadData(self, path: str):
         with open(path, "r") as file:
             lines = file.readlines()
@@ -329,10 +378,12 @@ class Player:
             self.y = float(lines[4])
             self.health = float(lines[5])
             self.maxHealth = float(lines[6])
+            self.critchange = float(lines[7])
+            self.speed = float(lines[8])
             self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
     def SaveData(self, path: str):
         with open(path, "w") as file:
-            file.write(f"{self.level}\n{self.isInShop}\n{self.playerSeed}\n{self.x}\n{self.y}\n{self.health}\n{self.maxHealth}")
+            file.write(f"{self.level}\n{self.isInShop}\n{self.playerSeed}\n{self.x}\n{self.y}\n{self.health}\n{self.maxHealth}\n{self.critchange}\n{self.speed}")
     def __init__(self, seed: Seed):
         self.playerSeed = seed
         self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
@@ -343,11 +394,28 @@ class Player:
         return 2 if self.health < self.maxHealth*.3 else 1 if self.health <= self.maxHealth*.5 else 0
     def getCameraOffset(self) -> tuple[float, float]:
         return (-(self.x*TILE_SIZE-SCREEN_WIDTH/2), -(self.y*TILE_SIZE-SCREEN_HEIGHT/2))
-    def Melee(self):
-        pass
+    def Hit(self, damage: float) -> bool:
+        self.health-=damage
+        self.dead = self.health <= 0
+        return self.dead
+    def Melee(self) -> tuple[bool, bool]:
+        hit = [False, False]
+        for enemy in self.currentMap.enemys:
+            if abs(math.hypot(self.x-enemy.x, self.y-enemy.y)) >= 1.2:
+                continue
+            if enemy.Hit(self.strength + (self.strength*0.25 if random.random() < self.critchange else 0)):
+                self.currentMap.enemys.remove(enemy)
+                hit[1] = True
+                del enemy
+            else:
+                print(enemy.health)
+                hit[0] = True
+        return hit
     def Collide(self, x: float, y: float) -> bool:
         return self.currentMap.GetTile(math.floor(x+1.5/RAW_TILE_SIZE), math.floor(y+7.5/RAW_TILE_SIZE)) in [Tile.EMPTY, Tile.CHEST]
     def Move(self, x: float, y: float):
+        if self.dead:
+            return
         if not self.Collide(self.x+x*self.speed, self.y+y*self.speed):
             self.x+=x*self.speed
             self.y+=y*self.speed
