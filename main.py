@@ -138,7 +138,7 @@ class Dungeoneer:
             deltaTime = (t - self.lastTime) / 1000.0
             self.lastTime = t
             self.update(deltaTime)
-    def update(self, deltaTime):
+    def update(self, deltaTime: float):
         if self.moveUp or self.moveDown or self.moveLeft or self.moveRight:
             if self.player.hasMapOpen:
                 self.mapOffset = [self.mapOffset[0] + (8*MAP_TILE_SIZE if self.moveLeft else -8*MAP_TILE_SIZE if self.moveRight else 0) * deltaTime, self.mapOffset[1] + (8*MAP_TILE_SIZE if self.moveUp else -8*MAP_TILE_SIZE if self.moveDown else 0) * deltaTime]
@@ -175,15 +175,19 @@ class Dungeoneer:
                 self.gameDisplay.blit(mirroredTileset if enemy.facing else tileset, (offset[0]+enemy.x*TILE_SIZE, offset[1]+enemy.y*TILE_SIZE), tileRects[enemy.variation] if not enemy.facing else pygame.Rect(tileset.get_size()[0]-tileRects[enemy.variation].left-TILE_SIZE, tileRects[enemy.variation].top, tileRects[enemy.variation].width, tileRects[enemy.variation].height))
 
             # TODO: Draw projectiles
-                
-            # TODO: Draw sword and animation
-            if self.player.isSwinging:
-
-                pass # TODO: Animate
-            else:
-                pass # TODO: Just draw sword.
 
             if not self.player.dead:
+                # TODO: Draw sword and animation
+                if self.isSwinging:
+                    self.swing+=deltaTime*3
+                    cropped = pygame.Surface((tileRects["ironsword"].width, tileRects["ironsword"].height))
+                    cropped.blit(tileset, (0,0), tileRects["ironsword"])
+                    self.gameDisplay.blit(cropped, (100, 100), tileRects["ironsword"])
+                    if self.swing>=1:
+                        self.swing = 0
+                        self.isSwinging = False
+                else:
+                    self.gameDisplay.blit(tileset, (SCREEN_WIDTH/2-(TILE_SIZE),SCREEN_HEIGHT/2-TILE_SIZE*1.5), tileRects["ironsword"])
                 self.gameDisplay.blit(mirroredTileset if self.player.facing else tileset, (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), tileRects["mirroredplayer"] if self.player.facing else tileRects["player"])
             del offset
 
@@ -248,6 +252,7 @@ class Dungeoneer:
                 if self.player.hasMapOpen:
                     self.mapOffset = [-(round(self.player.x)*MAP_TILE_SIZE)+SCREEN_WIDTH/2, -(round(self.player.y)*MAP_TILE_SIZE)+SCREEN_HEIGHT/2]
             elif event.dict["key"]==K_u:
+                self.isSwinging = True
                 hit = self.player.Melee()
                 if hit[0]:
                     pygame.mixer.Sound.play(self.hitSound)
