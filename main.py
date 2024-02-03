@@ -111,6 +111,8 @@ class Dungeoneer:
     FPS: pygame.time.Clock
     deathAlphaLevel: float = 0
     mapOffset: tuple[float, float] = [0, 0]
+    isSwinging: bool = False
+    swing: float = 0
     def __init__(self):
         self.player = Player(Seed())
         pygame.init()
@@ -171,6 +173,15 @@ class Dungeoneer:
             
             for enemy in self.player.currentMap.enemys:
                 self.gameDisplay.blit(mirroredTileset if enemy.facing else tileset, (offset[0]+enemy.x*TILE_SIZE, offset[1]+enemy.y*TILE_SIZE), tileRects[enemy.variation] if not enemy.facing else pygame.Rect(tileset.get_size()[0]-tileRects[enemy.variation].left-TILE_SIZE, tileRects[enemy.variation].top, tileRects[enemy.variation].width, tileRects[enemy.variation].height))
+
+            # TODO: Draw projectiles
+                
+            # TODO: Draw sword and animation
+            if self.player.isSwinging:
+
+                pass # TODO: Animate
+            else:
+                pass # TODO: Just draw sword.
 
             if not self.player.dead:
                 self.gameDisplay.blit(mirroredTileset if self.player.facing else tileset, (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), tileRects["mirroredplayer"] if self.player.facing else tileRects["player"])
@@ -238,6 +249,12 @@ class Dungeoneer:
                     self.mapOffset = [-(round(self.player.x)*MAP_TILE_SIZE)+SCREEN_WIDTH/2, -(round(self.player.y)*MAP_TILE_SIZE)+SCREEN_HEIGHT/2]
             elif event.dict["key"]==K_u:
                 hit = self.player.Melee()
+                if hit[0]:
+                    pygame.mixer.Sound.play(self.hitSound)
+                if hit[1]:
+                    pygame.mixer.Sound.play(self.killSound)
+            elif event.dict["key"]==K_k:
+                hit = self.player.Range()
                 if hit[0]:
                     pygame.mixer.Sound.play(self.hitSound)
                 if hit[1]:

@@ -401,16 +401,17 @@ class Player:
     def Melee(self) -> tuple[bool, bool]:
         hit = [False, False]
         for enemy in self.currentMap.enemys:
-            if abs(math.hypot(self.x-enemy.x, self.y-enemy.y)) >= 1.2:
+            if abs(math.hypot(self.x-enemy.x, self.y-enemy.y)) >= 2.2:
                 continue
             if enemy.Hit(self.strength + (self.strength*0.25 if random.random() < self.critchange else 0)):
                 self.currentMap.enemys.remove(enemy)
                 hit[1] = True
                 del enemy
             else:
-                print(enemy.health)
                 hit[0] = True
         return hit
+    def Range(self) -> tuple[bool, bool]: # TODO: Ranged attacks
+        pass
     def Collide(self, x: float, y: float) -> bool:
         return self.currentMap.GetTile(math.floor(x+1.5/RAW_TILE_SIZE), math.floor(y+7.5/RAW_TILE_SIZE)) in [Tile.EMPTY, Tile.CHEST]
     def Move(self, x: float, y: float):
