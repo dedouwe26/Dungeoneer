@@ -108,6 +108,7 @@ class Enemy:
         return (self.collisionMap[x][y] in [Tile.EMPTY, Tile.CHEST]) if 0 <= x < len(self.collisionMap) and 0 <= y < len(self.collisionMap[0]) else False
 
 class Map:
+    projectiles: list[tuple[float, float, Enemy]] = []
     renderMap: list[tuple[str, int, int]]
     mapSeed: Seed
     level: int
@@ -119,7 +120,7 @@ class Map:
     bandages: list[tuple[int, int]] = []
     chestPos: tuple[int, int]
     collisionMap: list[list[Tile]]
-    chestState: int = 0 # 0 not opened 1 opened 2 looted
+    chestState: bool = False
     def __init__(self, level: int, seed: Seed, enemyCount: int, bandageCount: int = 0):
         self.level = level
         self.mapSeed = seed.Add(self.level)
@@ -312,7 +313,7 @@ class Map:
                             self.renderMap.append(("wallright", x, y-1))
                     
                     if tile == Tile.CHEST:
-                        self.renderMap.append(("closedchest" if self.chestState == 0 else "fullchest" if self.chestState == 1 else "emptychest", x, y))
+                        self.renderMap.append(("closedchest" if not self.chestState else "emptychest", x, y))
                     elif tile == Tile.ENTRANCE:
                         self.renderMap.append(("entrance", x, y))
                     elif tile == Tile.EXIT:
@@ -360,14 +361,18 @@ class Player:
     currentMap: Map
     optionsOpened: bool = False
     level: int = 0
-    maxHealth: float = 10 # Blue
+    maxHealth: float = 10 # yellow
     health: float = maxHealth 
     speed: float = 4 # green
-    critchange: float = 0.05 # Yellow
+    critchange: float = 0.05 # blue
     strength: float = 1 # red
     x: float = 0
     y: float = 0
     dead: bool = False
+    bowCooldown: float = 0
+    drops: list[tuple[float, float, str]] = []
+    errorFade: bool = False
+    nextMapFade: bool = False
     def LoadData(self, path: str):
         with open(path, "r") as file:
             lines = file.readlines()
@@ -398,22 +403,69 @@ class Player:
         self.health-=damage
         self.dead = self.health <= 0
         return self.dead
-    def Melee(self) -> tuple[bool, bool]:
-        hit = [False, False]
+    def Melee(self) -> tuple[bool, bool, list[tuple[float, float]]]:
+        hit: tuple[bool, bool, list[tuple[float, float]]] = [False, False, []]
         for enemy in self.currentMap.enemys:
             if abs(math.hypot(self.x-enemy.x, self.y-enemy.y)) >= 2.2:
                 continue
-            if enemy.Hit(self.strength + (self.strength*0.25 if random.random() < self.critchange else 0)):
+            crit = random.random() < self.critchange
+            if crit:
+                hit[2].append((enemy.x+random.random(), enemy.y+random.random(), 1))
+            if enemy.Hit(self.strength + (self.strength*0.3 if crit else 0)):
                 self.currentMap.enemys.remove(enemy)
                 hit[1] = True
                 del enemy
             else:
                 hit[0] = True
         return hit
-    def Range(self) -> tuple[bool, bool]: # TODO: Ranged attacks
-        pass
+    def Range(self):
+        if self.bowCooldown <= 0:
+
+            for enemy in self.currentMap.enemys:
+                self.bowCooldown=1
+                if abs(math.hypot(self.x-enemy.x, self.y-enemy.y)) >= 10:
+                    continue
+                self.currentMap.projectiles.append([self.x, self.y, enemy])  
+                break
+    def Heal(self):
+        # Add 10% health
+        self.health=min(self.health+self.maxHealth*.1, self.maxHealth)
+    def Interact(self) -> bool:
+        for drop in self.drops:
+            if abs(math.hypot(self.x-drop[0], self.y-drop[1])) < 1:
+                if drop[2] == "bluepotion":
+                    # crit
+                    self.critchange=min(self.critchange+0.05, 1)
+                elif drop[2] == "yellowpotion":
+                    # max health
+                    self.maxHealth+=1
+                elif drop[2] == "redpotion":
+                    # strength
+                    self.strength+=1
+                elif drop[2] == "greenpotion":
+                    # speed
+                    self.speed+=1
+                self.drops.remove(drop)
+                return True
+        for tile in [(self.currentMap.GetTile(math.floor(self.x-1), math.floor(self.y-1)), -1, -1), (self.currentMap.GetTile(math.floor(self.x-1), math.floor(self.y)), -1, 0), (self.currentMap.GetTile(math.floor(self.x-1), math.floor(self.y+1)), -1, 1),
+                     (self.currentMap.GetTile(math.floor(self.x), math.floor(self.y-1)), 0, -1), (self.currentMap.GetTile(math.floor(self.x), math.floor(self.y)), 0, 0), (self.currentMap.GetTile(math.floor(self.x), math.floor(self.y+1)), 0, 1),
+                     (self.currentMap.GetTile(math.floor(self.x+1), math.floor(self.y-1)), 1, -1),(self.currentMap.GetTile(math.floor(self.x+1), math.floor(self.y)), 1, 0),(self.currentMap.GetTile(math.floor(self.x+1), math.floor(self.y+1)), 1, 1)]:
+            if tile[0]==Tile.CHEST and not self.currentMap.chestState:
+                self.currentMap.chestState = True
+                self.drops.append((self.x, self.y, self.currentMap.mapSeed.GetRandom().choice(["redpotion", "greenpotion", "yellowpotion", "bluepotion"])))
+                self.currentMap.GenerateRenderMap()
+            elif tile[0]==Tile.BANDAGE:
+                self.Heal()
+                self.currentMap.map[math.floor(self.x+tile[1]), math.floor(self.y+tile[2])] = Tile.FLOOR
+                self.currentMap.GenerateRenderMap()
+            elif tile[0]==Tile.EXIT:
+                if len(self.currentMap.enemys)!=0:
+                    self.errorFade = True
+                else:
+                    self.nextMapFade = True
+            
     def Collide(self, x: float, y: float) -> bool:
-        return self.currentMap.GetTile(math.floor(x+1.5/RAW_TILE_SIZE), math.floor(y+7.5/RAW_TILE_SIZE)) in [Tile.EMPTY, Tile.CHEST]
+        return self.currentMap.GetTile(math.floor(x+1.5/RAW_TILE_SIZE), math.floor(y+7.5/RAW_TILE_SIZE)) in ([Tile.EMPTY, Tile.CHEST] if not self.currentMap.chestState else [Tile.EMPTY])
     def Move(self, x: float, y: float):
         if self.dead:
             return
@@ -423,13 +475,10 @@ class Player:
         if x!=0:
             self.facing = True if x < 0 else False
     def NextLevel(self) -> bool:
-        if len(self.currentMap.enemys)!=0:
-            return False
         self.level+=1
         self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
         self.x = self.currentMap.startPos[0]
         self.y = self.currentMap.startPos[1]
-        return True
 
 if __name__ == "__main__":
     print(f"Dungeoneer\n{'  '.join([Tile.TYPES[key]+' = '+key for key in Tile.TYPES])}")

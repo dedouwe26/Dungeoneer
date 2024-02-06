@@ -1,3 +1,4 @@
+from turtle import Vec2D
 from Dungeoneer import *
 import sys
 import pygame
@@ -46,9 +47,10 @@ tileRects: dict[str, pygame.Rect] = {
     "wallboth": pygame.Rect(7*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "goldsword": pygame.Rect(6*TILE_SIZE, 0, TILE_SIZE, TILE_SIZE*2),
     "ironsword": pygame.Rect(7*TILE_SIZE, 0, TILE_SIZE, TILE_SIZE*2),
+    "arrow": pygame.Rect(4*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "crit": pygame.Rect(0, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "closedchest": pygame.Rect(0, 2*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "emptychest": pygame.Rect(0, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
-    "fullchest": pygame.Rect(0, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "armoredplayer": pygame.Rect(TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "player": pygame.Rect(TILE_SIZE, 4*TILE_SIZE, TILE_SIZE, TILE_SIZE),
     "mirroredarmoredplayer": pygame.Rect(tileset.get_size()[0]-2*TILE_SIZE, 3*TILE_SIZE, TILE_SIZE, TILE_SIZE),
@@ -83,15 +85,18 @@ tileRects: dict[str, pygame.Rect] = {
 }
 LOGO_IMG = pygame.image.load('assets/logo.png')
 # Keybinds:
-# ^ move up
-# v move down
-# < move left
-# > move right
-# (space) SELECT open / close map
-# u X Melee
-# k B Range
-# j A Interact
-# (enter) START Menu
+# ^ move up .w
+# v move down .s
+# < move left .a
+# > move right .d
+# (space) SELECT open / close map .r
+# u X Melee .q
+# k B Range .e
+# j A Interact .f
+# (enter) START Menu 
+
+# (. keybinds)
+PC = True
 
 
 class Dungeoneer:
@@ -112,7 +117,10 @@ class Dungeoneer:
     deathAlphaLevel: float = 0
     mapOffset: tuple[float, float] = [0, 0]
     isSwinging: bool = False
-    swing: float = 0
+    swing: float = 1
+    fadeLvl: float = 0
+    downFade: bool = False
+    crits: list[tuple[float, float, float]] = []
     def __init__(self):
         self.player = Player(Seed())
         pygame.init()
@@ -174,21 +182,58 @@ class Dungeoneer:
             for enemy in self.player.currentMap.enemys:
                 self.gameDisplay.blit(mirroredTileset if enemy.facing else tileset, (offset[0]+enemy.x*TILE_SIZE, offset[1]+enemy.y*TILE_SIZE), tileRects[enemy.variation] if not enemy.facing else pygame.Rect(tileset.get_size()[0]-tileRects[enemy.variation].left-TILE_SIZE, tileRects[enemy.variation].top, tileRects[enemy.variation].width, tileRects[enemy.variation].height))
 
-            # TODO: Draw projectiles
+            for drop in self.player.drops:
+                self.gameDisplay.blit(tileset, (offset[0]+drop[0]*TILE_SIZE, offset[1]+drop[1]*TILE_SIZE), tileRects[drop[2]])
+
+            for i in range(len(self.player.currentMap.projectiles)):
+                if not i < len(self.player.currentMap.projectiles):
+                    continue
+                projectile = self.player.currentMap.projectiles[i]
+                direction = [projectile[2].x - projectile[0], projectile[2].y - projectile[1]]
+                distance = math.sqrt(direction[0] ** 2 + direction[1] ** 2)
+                if not distance < 0.5:
+                    direction = [direction[0] / distance, direction[1] / distance]
+                    angle = math.degrees(math.atan2(-direction[1], direction[0]))-45
+                    projectile[0] += direction[0] * deltaTime * 7
+                    projectile[1] += direction[1] * deltaTime * 7
+                    cropped = pygame.Surface((tileRects["arrow"].width, tileRects["arrow"].height), pygame.SRCALPHA)
+                    cropped.blit(tileset, (0,0), tileRects["arrow"])
+                    self.gameDisplay.blit(pygame.transform.rotate(cropped, angle), (offset[0]+projectile[0]*TILE_SIZE, offset[1]+projectile[1]*TILE_SIZE))
+                else:
+                    if projectile[2].Hit(self.player.strength*0.5):
+                        del self.player.currentMap.projectiles[i]
+                        if projectile[2] in self.player.currentMap.enemys:
+                            pygame.mixer.Sound.play(self.killSound)
+                            self.player.currentMap.enemys.remove(projectile[2])
+                    else:
+                        pygame.mixer.Sound.play(self.hitSound)
+                        del self.player.currentMap.projectiles[i]
+            self.player.bowCooldown-=deltaTime*0.6
 
             if not self.player.dead:
-                # TODO: Draw sword and animation
                 if self.isSwinging:
-                    self.swing+=deltaTime*3
-                    cropped = pygame.Surface((tileRects["ironsword"].width, tileRects["ironsword"].height))
+                    self.swing-=deltaTime*3
+                    cropped = pygame.Surface((tileRects["ironsword"].width, tileRects["ironsword"].height), pygame.SRCALPHA)
                     cropped.blit(tileset, (0,0), tileRects["ironsword"])
-                    self.gameDisplay.blit(cropped, (100, 100), tileRects["ironsword"])
-                    if self.swing>=1:
-                        self.swing = 0
+                    rotated = pygame.transform.rotate(pygame.transform.flip(cropped, False, True), -self.swing*180+90)
+                    offset = pygame.Vector2(0, -TILE_SIZE).rotate(self.swing*180+90)
+
+                    self.gameDisplay.blit(rotated, rotated.get_rect(center=(SCREEN_WIDTH/2,SCREEN_HEIGHT/2)+offset))
+                    if self.swing<=0:
+                        self.swing = 1
                         self.isSwinging = False
                 else:
-                    self.gameDisplay.blit(tileset, (SCREEN_WIDTH/2-(TILE_SIZE),SCREEN_HEIGHT/2-TILE_SIZE*1.5), tileRects["ironsword"])
+                    self.gameDisplay.blit(tileset, (SCREEN_WIDTH/2-TILE_SIZE if self.player.facing else SCREEN_WIDTH/2,SCREEN_HEIGHT/2-TILE_SIZE*1.5), tileRects["ironsword"])
                 self.gameDisplay.blit(mirroredTileset if self.player.facing else tileset, (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), tileRects["mirroredplayer"] if self.player.facing else tileRects["player"])
+
+            for i in range(len(self.crits)):
+                if not i < len(self.crits):
+                    continue
+                crit = self.crits[i]
+                self.gameDisplay.blit(tileset, (offset[0]+crit[0]*TILE_SIZE, offset[1]+crit[1]*TILE_SIZE), tileRects["crit"])
+                self.crits[i] = (crit[0], crit[1], crit[2]-deltaTime)
+                if crit[2]-deltaTime<=0:
+                    del self.crits[i]
             del offset
 
             # draw UI
@@ -204,19 +249,73 @@ class Dungeoneer:
 
             self.gameDisplay.blit(tileset, (0, SCREEN_HEIGHT-TILE_SIZE/2), tileRects["healthforeground"])
 
+            # maxhealth
+            text = self.font.render(str(self.player.maxHealth), False, (227, 178, 58))
+            maxhealthrect = text.get_rect()
+            maxhealthrect.bottom = SCREEN_HEIGHT
+            maxhealthrect.left = 3*TILE_SIZE+(3*WORLD_SIZE)
+            self.gameDisplay.blit(text, maxhealthrect)
             # Level
             text = self.font.render(str(self.player.level), False, (180, 207, 30))
             rect = text.get_rect()
             rect.bottom = SCREEN_HEIGHT
-            rect.left = 3*TILE_SIZE+(3*WORLD_SIZE)
+            rect.right = SCREEN_WIDTH
             self.gameDisplay.blit(text, rect)
+            # Speed
+            text = self.font.render(str(self.player.speed), False, (100, 148, 56))
+            rect = text.get_rect()
+            rect.bottom = SCREEN_HEIGHT-(10*WORLD_SIZE)
+            rect.left = 0
+            self.gameDisplay.blit(text, rect)
+            # crit
+            text = self.font.render(str(self.player.critchange*100)+"%", False, (0, 39, 94))
+            rect = text.get_rect()
+            rect.bottom = SCREEN_HEIGHT-(20*WORLD_SIZE)
+            rect.left = 0
+            self.gameDisplay.blit(text, rect)
+            # strength
+            text = self.font.render(str(self.player.strength), False, (208, 70, 72))
+            rect = text.get_rect()
+            rect.bottom = SCREEN_HEIGHT-(30*WORLD_SIZE)
+            rect.left = 0
+            self.gameDisplay.blit(text, rect)
+            # enemies left
+            text = self.font.render(str(len(self.player.currentMap.enemys)), False, (240, 240, 221))
+            rect = text.get_rect()
+            rect.top = 0
+            rect.centerx = SCREEN_WIDTH/2
+            self.gameDisplay.blit(text, rect)
+
+            if self.player.nextMapFade or self.player.errorFade:
+                if not self.downFade:
+                    self.fadeLvl = min((255 if self.player.nextMapFade else 128), self.fadeLvl+deltaTime*(90 if self.player.errorFade else 80))
+                    self.downFade = not (self.fadeLvl < (255 if self.player.nextMapFade else 70))
+                else: 
+                    self.fadeLvl = max(0, self.fadeLvl-deltaTime*(50 if self.player.errorFade else 60))
+                    self.downFade = self.fadeLvl > 0
+                    if self.player.nextMapFade:
+                        self.player.nextMapFade = self.fadeLvl > 0
+                    if self.player.errorFade:
+                        self.player.errorFade = self.fadeLvl > 0
+                
+                if self.player.nextMapFade:
+                    if self.fadeLvl == 255:
+                        self.player.NextLevel()
+                    elif self.fadeLvl == 0:
+                        pygame.mixer.Sound.play(self.levelUpSound)
+
+
+                fade = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+                fade.set_alpha(self.fadeLvl)
+                fade.fill((182, 47, 49) if self.player.errorFade else (0,0,0))
+                self.gameDisplay.blit(fade, (0,0), fade.get_rect())
 
         if self.player.dead:
             self.deathAlphaLevel = min(255, self.deathAlphaLevel+deltaTime*30)
             alphaSurf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
             alphaSurf.set_alpha(self.deathAlphaLevel)
             alphaSurf.fill((0,0,0))
-            self.gameDisplay.blit(alphaSurf, (0,0), pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+            self.gameDisplay.blit(alphaSurf, (0,0), alphaSurf.get_rect())
             text = self.font.render("Game Over", False, (182, 47, 49))
             rect = text.get_rect()
             rect.centerx = SCREEN_WIDTH/2
@@ -239,39 +338,40 @@ class Dungeoneer:
         sys.exit()
     def onEvent(self, event: pygame.event.Event):
         if event.type == KEYDOWN:
-            if event.dict["key"]==K_UP:
+            if event.dict["key"]==K_w if PC else K_UP:
                 self.moveUp = True
-            elif event.dict["key"]==K_DOWN:
+            elif event.dict["key"]==K_s if PC else K_DOWN:
                 self.moveDown = True
-            elif event.dict["key"]==K_LEFT:
+            elif event.dict["key"]==K_a if PC else K_LEFT:
                 self.moveLeft = True
-            elif event.dict["key"]==K_RIGHT:
+            elif event.dict["key"]==K_d if PC else K_RIGHT:
                 self.moveRight = True
-            elif event.dict["key"]==K_SPACE:
+            elif event.dict["key"]==K_r if PC else K_SPACE:
                 self.player.hasMapOpen = not self.player.hasMapOpen
                 if self.player.hasMapOpen:
                     self.mapOffset = [-(round(self.player.x)*MAP_TILE_SIZE)+SCREEN_WIDTH/2, -(round(self.player.y)*MAP_TILE_SIZE)+SCREEN_HEIGHT/2]
-            elif event.dict["key"]==K_u:
+            elif event.dict["key"]==K_q if PC else K_u:
                 self.isSwinging = True
                 hit = self.player.Melee()
                 if hit[0]:
                     pygame.mixer.Sound.play(self.hitSound)
                 if hit[1]:
                     pygame.mixer.Sound.play(self.killSound)
-            elif event.dict["key"]==K_k:
-                hit = self.player.Range()
-                if hit[0]:
-                    pygame.mixer.Sound.play(self.hitSound)
-                if hit[1]:
-                    pygame.mixer.Sound.play(self.killSound)
+                if len(hit[2])>0:
+                    self.crits.extend(hit[2])
+            elif event.dict["key"]==K_e if PC else K_k:
+                self.player.Range()
+            elif event.dict["key"]==K_f if PC else K_j:
+                if self.player.Interact():
+                    pygame.mixer.Sound.play(self.pickUpSound)
         elif event.type == KEYUP:
-            if event.dict["key"]==K_UP:
+            if event.dict["key"]==K_w if PC else K_UP:
                 self.moveUp = False
-            elif event.dict["key"]==K_DOWN:
+            elif event.dict["key"]==K_s if PC else K_DOWN:
                 self.moveDown = False
-            elif event.dict["key"]==K_LEFT:
+            elif event.dict["key"]==K_a if PC else K_LEFT:
                 self.moveLeft = False
-            elif event.dict["key"]==K_RIGHT:
+            elif event.dict["key"]==K_d if PC else K_RIGHT:
                 self.moveRight = False
         
 
