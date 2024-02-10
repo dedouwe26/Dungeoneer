@@ -14,27 +14,3 @@ The chest is randomly placed and the enemy's are randomly placed on floor tiles.
 Just like the bandages.
 ## Tiles
 <table><tr><th>Name</th><th>Icon</th></tr><tr><th>Filled</th><th>#</th></tr><tr><th>Floor</th><th>(space)</th></tr><tr><th>Enemy</th><th>.</th></tr><tr><th>Bandage</th><th>=</th></tr><tr><th>Chest</th><th>@</th></tr></table>
-<h2>File Format</h2>
-<code>
-{lvl: float}    <br>
-{inshop: bool}  <br>
-{seed: str}     <br>
-{x: float}      <br>
-{y: float}      <br>
-{health: float} <br>
-{maxHealth: float} <br>
-{critchange: float} <br>
-{speed: float}  <br>
-</code>         <br>
-<b>Example:</b> <br>
-<code>
-16              <br>
-False           <br>
-$843E38FFD0     <br>
-10              <br>
-22.4            <br>
-3.1             <br>
-10              <br>
-0.05            <br>
-4               <br>
-</code>

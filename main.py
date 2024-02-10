@@ -1,4 +1,4 @@
-from turtle import Vec2D
+import traceback
 from Dungeoneer import *
 import sys
 import pygame
@@ -84,6 +84,7 @@ tileRects: dict[str, pygame.Rect] = {
     "redenemy5": pygame.Rect(5*TILE_SIZE, 6*TILE_SIZE, TILE_SIZE, TILE_SIZE),
 }
 LOGO_IMG = pygame.image.load('assets/logo.png')
+
 # Keybinds:
 # ^ move up .w
 # v move down .s
@@ -93,13 +94,14 @@ LOGO_IMG = pygame.image.load('assets/logo.png')
 # u X Melee .q
 # k B Range .e
 # j A Interact .f
-# (enter) START Menu 
+# (enter) START Menu .esc
 
 # (. keybinds)
 PC = True
 
 
 class Dungeoneer:
+    menu: Menu = Menu()
     hitSound: pygame.mixer.Sound
     killSound: pygame.mixer.Sound
     levelUpSound: pygame.mixer.Sound
@@ -111,7 +113,7 @@ class Dungeoneer:
     moveRight: bool = False
     lastTime: int
     isRunning: bool = True
-    player: Player
+    player: Player = None
     gameDisplay: pygame.Surface
     FPS: pygame.time.Clock
     deathAlphaLevel: float = 0
@@ -122,7 +124,6 @@ class Dungeoneer:
     downFade: bool = False
     crits: list[tuple[float, float, float]] = []
     def __init__(self):
-        self.player = Player(Seed())
         pygame.init()
         pygame.mixer.init()
         self.font = pygame.font.Font("assets/PublicPixel.ttf", 9*WORLD_SIZE)
@@ -146,7 +147,27 @@ class Dungeoneer:
             deltaTime = (t - self.lastTime) / 1000.0
             self.lastTime = t
             self.update(deltaTime)
+            pygame.display.update()
+            self.FPS.tick(60)
     def update(self, deltaTime: float):
+        if self.menu.opened:
+            self.gameDisplay.fill((28,17,23))
+            icon = pygame.transform.scale(LOGO_IMG, (50*WORLD_SIZE, 50*WORLD_SIZE))
+            rect = icon.get_rect(centerx=SCREEN_WIDTH/2, top = TILE_SIZE*2)
+            self.gameDisplay.blit(icon, rect)
+            offset = rect.bottom + TILE_SIZE
+            for text in self.menu.getRenderText():
+                if text[1]:
+                    self.font.set_underline(True)
+                text = self.font.render(text[0], False, (218, 209, 212))
+                rect = text.get_rect()
+                rect.centerx = SCREEN_WIDTH/2
+                rect.top = offset
+                self.gameDisplay.blit(text, rect)
+                offset += rect.height + TILE_SIZE
+                self.font.set_underline(False)
+            return
+
         if self.moveUp or self.moveDown or self.moveLeft or self.moveRight:
             if self.player.hasMapOpen:
                 self.mapOffset = [self.mapOffset[0] + (8*MAP_TILE_SIZE if self.moveLeft else -8*MAP_TILE_SIZE if self.moveRight else 0) * deltaTime, self.mapOffset[1] + (8*MAP_TILE_SIZE if self.moveUp else -8*MAP_TILE_SIZE if self.moveDown else 0) * deltaTime]
@@ -162,7 +183,7 @@ class Dungeoneer:
                     velocity[0]+=deltaTime
                 self.player.Move(velocity[0], velocity[1])
         if not self.player.dead:
-            for enemy in self.player.currentMap.enemys:
+            for enemy in self.player.currentMap.enemies:
                 if enemy.Update(self.player.x-.5, self.player.y-.5, deltaTime):
                     pygame.mixer.Sound.play(self.hitSound)
                     if self.player.Hit(enemy.strength):
@@ -179,7 +200,7 @@ class Dungeoneer:
             for tile in self.player.currentMap.renderMap:
                 self.gameDisplay.blit(tileset, (offset[0]+tile[1]*TILE_SIZE, offset[1]+tile[2]*TILE_SIZE), tileRects[tile[0]])
             
-            for enemy in self.player.currentMap.enemys:
+            for enemy in self.player.currentMap.enemies:
                 self.gameDisplay.blit(mirroredTileset if enemy.facing else tileset, (offset[0]+enemy.x*TILE_SIZE, offset[1]+enemy.y*TILE_SIZE), tileRects[enemy.variation] if not enemy.facing else pygame.Rect(tileset.get_size()[0]-tileRects[enemy.variation].left-TILE_SIZE, tileRects[enemy.variation].top, tileRects[enemy.variation].width, tileRects[enemy.variation].height))
 
             for drop in self.player.drops:
@@ -202,19 +223,22 @@ class Dungeoneer:
                 else:
                     if projectile[2].Hit(self.player.strength*0.5):
                         del self.player.currentMap.projectiles[i]
-                        if projectile[2] in self.player.currentMap.enemys:
+                        if projectile[2] in self.player.currentMap.enemies:
                             pygame.mixer.Sound.play(self.killSound)
-                            self.player.currentMap.enemys.remove(projectile[2])
+                            self.player.currentMap.enemies.remove(projectile[2])
                     else:
                         pygame.mixer.Sound.play(self.hitSound)
                         del self.player.currentMap.projectiles[i]
             self.player.bowCooldown-=deltaTime*0.6
 
+            sword = tileRects["goldsword"] if self.player.strength >= 10 else tileRects["ironsword"]
+            player = (tileRects["armoredplayer"], tileRects["mirroredarmoredplayer"]) if self.player.maxHealth >= 20 else (tileRects["player"], tileRects["mirroredplayer"])
+
             if not self.player.dead:
                 if self.isSwinging:
                     self.swing-=deltaTime*3
-                    cropped = pygame.Surface((tileRects["ironsword"].width, tileRects["ironsword"].height), pygame.SRCALPHA)
-                    cropped.blit(tileset, (0,0), tileRects["ironsword"])
+                    cropped = pygame.Surface((sword.width, sword.height), pygame.SRCALPHA)
+                    cropped.blit(tileset, (0,0), sword)
                     rotated = pygame.transform.rotate(pygame.transform.flip(cropped, False, True), -self.swing*180+90)
                     offset = pygame.Vector2(0, -TILE_SIZE).rotate(self.swing*180+90)
 
@@ -223,8 +247,8 @@ class Dungeoneer:
                         self.swing = 1
                         self.isSwinging = False
                 else:
-                    self.gameDisplay.blit(tileset, (SCREEN_WIDTH/2-TILE_SIZE if self.player.facing else SCREEN_WIDTH/2,SCREEN_HEIGHT/2-TILE_SIZE*1.5), tileRects["ironsword"])
-                self.gameDisplay.blit(mirroredTileset if self.player.facing else tileset, (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), tileRects["mirroredplayer"] if self.player.facing else tileRects["player"])
+                    self.gameDisplay.blit(tileset, (SCREEN_WIDTH/2-TILE_SIZE if self.player.facing else SCREEN_WIDTH/2,SCREEN_HEIGHT/2-TILE_SIZE*1.5), sword)
+                self.gameDisplay.blit(mirroredTileset if self.player.facing else tileset, (SCREEN_WIDTH/2-TILE_SIZE/2,SCREEN_HEIGHT/2-TILE_SIZE/2), player[1] if self.player.facing else player[0])
 
             for i in range(len(self.crits)):
                 if not i < len(self.crits):
@@ -280,13 +304,15 @@ class Dungeoneer:
             rect.left = 0
             self.gameDisplay.blit(text, rect)
             # enemies left
-            text = self.font.render(str(len(self.player.currentMap.enemys)), False, (240, 240, 221))
+            text = self.font.render(str(len(self.player.currentMap.enemies)), False, (240, 240, 221))
             rect = text.get_rect()
             rect.top = 0
             rect.centerx = SCREEN_WIDTH/2
             self.gameDisplay.blit(text, rect)
 
             if self.player.nextMapFade or self.player.errorFade:
+                if self.player.nextMapFade and self.fadeLvl == 0:
+                    pygame.mixer.Sound.play(self.levelUpSound)
                 if not self.downFade:
                     self.fadeLvl = min((255 if self.player.nextMapFade else 128), self.fadeLvl+deltaTime*(90 if self.player.errorFade else 80))
                     self.downFade = not (self.fadeLvl < (255 if self.player.nextMapFade else 70))
@@ -301,8 +327,7 @@ class Dungeoneer:
                 if self.player.nextMapFade:
                     if self.fadeLvl == 255:
                         self.player.NextLevel()
-                    elif self.fadeLvl == 0:
-                        pygame.mixer.Sound.play(self.levelUpSound)
+                        
 
 
                 fade = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -329,9 +354,6 @@ class Dungeoneer:
             rect.top = SCREEN_HEIGHT/2
             self.gameDisplay.blit(text, rect)
 
-
-        pygame.display.update()
-        self.FPS.tick(60)
     def exit(self):
         self.isRunning = False
         pygame.quit()
@@ -339,18 +361,24 @@ class Dungeoneer:
     def onEvent(self, event: pygame.event.Event):
         if event.type == KEYDOWN:
             if event.dict["key"]==K_w if PC else K_UP:
-                self.moveUp = True
+                if self.menu.opened:
+                    self.menu.Up()
+                else:
+                    self.moveUp = True
             elif event.dict["key"]==K_s if PC else K_DOWN:
-                self.moveDown = True
-            elif event.dict["key"]==K_a if PC else K_LEFT:
+                if self.menu.opened:
+                    self.menu.Down()
+                else:
+                    self.moveDown = True
+            elif (not self.menu.opened) and event.dict["key"]==K_a if PC else K_LEFT:
                 self.moveLeft = True
-            elif event.dict["key"]==K_d if PC else K_RIGHT:
+            elif (not self.menu.opened) and event.dict["key"]==K_d if PC else K_RIGHT:
                 self.moveRight = True
-            elif event.dict["key"]==K_r if PC else K_SPACE:
+            elif (not self.menu.opened) and event.dict["key"]==K_r if PC else K_SPACE:
                 self.player.hasMapOpen = not self.player.hasMapOpen
                 if self.player.hasMapOpen:
                     self.mapOffset = [-(round(self.player.x)*MAP_TILE_SIZE)+SCREEN_WIDTH/2, -(round(self.player.y)*MAP_TILE_SIZE)+SCREEN_HEIGHT/2]
-            elif event.dict["key"]==K_q if PC else K_u:
+            elif (not self.menu.opened) and event.dict["key"]==K_q if PC else K_u:
                 self.isSwinging = True
                 hit = self.player.Melee()
                 if hit[0]:
@@ -360,12 +388,25 @@ class Dungeoneer:
                 if len(hit[2])>0:
                     self.crits.extend(hit[2])
             elif event.dict["key"]==K_e if PC else K_k:
-                self.player.Range()
+                if self.menu.opened:
+                    self.menu.Back()
+                else:
+                    self.player.Range()
             elif event.dict["key"]==K_f if PC else K_j:
-                if self.player.Interact():
-                    pygame.mixer.Sound.play(self.pickUpSound)
+                if self.menu.opened:
+                    self.menuEvent(self.menu.Select())
+                else:
+                    if self.player.Interact():
+                        pygame.mixer.Sound.play(self.pickUpSound)
+            elif event.dict["key"]==K_ESCAPE if PC else K_RETURN:
+                if self.player!=None:
+                    self.menu.opened = not self.menu.opened
+                    if self.menu.opened:
+                        self.menu.current = "Main"
         elif event.type == KEYUP:
-            if event.dict["key"]==K_w if PC else K_UP:
+            if self.menu.opened:
+                return
+            elif event.dict["key"]==K_w if PC else K_UP:
                 self.moveUp = False
             elif event.dict["key"]==K_s if PC else K_DOWN:
                 self.moveDown = False
@@ -373,6 +414,38 @@ class Dungeoneer:
                 self.moveLeft = False
             elif event.dict["key"]==K_d if PC else K_RIGHT:
                 self.moveRight = False
-        
+    def menuEvent(self, event: str):
+        if event == "n":
+            if self.player==None:
+                self.player = Player(Seed())
+            else:
+                self.player.Reset()
+        elif event == "l1":
+            if self.player==None:
+                self.player = Player(Seed(1))
+            self.player.LoadData("./saves/save1.dat")
+        elif event == "l2":
+            if self.player==None:
+                self.player = Player(Seed(1))
+            self.player.LoadData("./saves/save2.dat")
+        elif event == "l3":
+            if self.player==None:
+                self.player = Player(Seed(1))
+            self.player.LoadData("./saves/save3.dat")
+        elif event == "s1":
+            self.player.SaveData("./saves/save1.dat")
+        elif event == "s2":
+            self.player.SaveData("./saves/save2.dat")
+        elif event == "s3":
+            self.player.SaveData("./saves/save3.dat")
+        elif event == "e":
+            pygame.quit()
+            sys.exit()
+try:
+    Dungeoneer()
+except Exception as e:
+    traceback.print_exception(e, e, e.__traceback__)
+    pygame.quit()
+    sys.exit(-1)
 
-Dungeoneer()
+# Made by: @dedouwe26 (0xDED)

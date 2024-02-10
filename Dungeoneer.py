@@ -1,4 +1,5 @@
 import math
+import os
 import random
 
 # One tile: 16x16px
@@ -13,7 +14,7 @@ MAP_TILE_SIZE = 8
 
 
 # Generator settings
-MAP_SIZE =  80
+MAP_SIZE = 80
 AMOUNT_ROOMS = 15
 ROOM_MIN_SIZE = 8
 ROOM_MAX_SIZE = 15
@@ -45,6 +46,8 @@ class Tile:
 
 class Seed:
     seed: int
+    def Reset(self):
+        self.seed = random.randint(0,1099511627775)
     def __init__(self, seed: int = random.randint(0,1099511627775), seedKey: str = ""):
         if seedKey!="":
             self.seed = int(seedKey.removeprefix("&"), 16)
@@ -56,8 +59,7 @@ class Seed:
     def GetRandom(self) -> random.Random:
         return random.Random(self.__str__())
     def Add(self, lvl: int):
-        self.seed += lvl
-        return self
+        return Seed(self.seed+lvl)
 
 class Enemy:
     x: float
@@ -113,7 +115,7 @@ class Map:
     mapSeed: Seed
     level: int
     rooms: list[tuple[int, int, int, int]] = []
-    enemys: list[Enemy] = []
+    enemies: list[Enemy] = []
     map: list[list[Tile]]
     startPos: tuple[float, float]
     endPos: tuple[float, float]
@@ -121,7 +123,14 @@ class Map:
     chestPos: tuple[int, int]
     collisionMap: list[list[Tile]]
     chestState: bool = False
+    def Reset(self):
+        self.projectiles = []
+        self.rooms = []
+        self.enemies = []
+        self.bandages = []
+        self.chestState = False
     def __init__(self, level: int, seed: Seed, enemyCount: int, bandageCount: int = 0):
+        self.Reset()
         self.level = level
         self.mapSeed = seed.Add(self.level)
         self.Generate(enemyCount, bandageCount)
@@ -219,7 +228,7 @@ class Map:
         for i in range(enemyCount):
             position = rand.choice(floor_positions)
             floor_positions.remove(position)
-            self.enemys.append(Enemy(self.collisionMap, float(position[0]), float(position[1]), self.level+1, rand))
+            self.enemies.append(Enemy(self.collisionMap, float(position[0]), float(position[1]), self.level+1, rand))
 
         # Bandages (health dependent)
         self.bandages = rand.sample(floor_positions, min(bandageCount, len(floor_positions)))
@@ -233,7 +242,7 @@ class Map:
         return self.map[x][y] if len(self.map) > x >= 0 and len(self.map[0]) > y >= 0 else Tile(Tile.EMPTY)
     def toMap(self) -> str:
         tempmap = self.map
-        for enemy in self.enemys:
+        for enemy in self.enemies:
             tempmap[round(enemy.x)][round(enemy.y)].type = Tile.ENEMY
         return "\n".join([" ".join([str(tile) for tile in row]) for row in tempmap])
     def GenerateMapRenderMap(self, playerX: float, playerY: float) -> list[tuple[str, int, int]]:
@@ -272,7 +281,7 @@ class Map:
                     if self.GetTile(x+1,y-1).hasFloor() and self.GetTile(x+1,y)==Tile.EMPTY and self.GetTile(x,y-1)==Tile.EMPTY:
                         renderMap.append(("bottomleftcorner", x, y))
         renderMap.append(("player", math.floor(playerX), math.floor(playerY)))
-        for enemy in self.enemys:
+        for enemy in self.enemies:
             renderMap.append(("enemy", math.floor(enemy.x), math.floor(enemy.y)))
         return renderMap
     def GenerateRenderMap(self):
@@ -361,7 +370,7 @@ class Player:
     currentMap: Map
     optionsOpened: bool = False
     level: int = 0
-    maxHealth: float = 10 # yellow
+    maxHealth: int = 10 # yellow
     health: float = maxHealth 
     speed: float = 4 # green
     critchange: float = 0.05 # blue
@@ -377,18 +386,19 @@ class Player:
         with open(path, "r") as file:
             lines = file.readlines()
             self.level = int(lines[0])
-            self.isInShop = bool(lines[1])
-            self.playerSeed = Seed(0, lines[2])
-            self.x = float(lines[3])
-            self.y = float(lines[4])
-            self.health = float(lines[5])
-            self.maxHealth = float(lines[6])
-            self.critchange = float(lines[7])
-            self.speed = float(lines[8])
+            self.playerSeed = Seed(0, lines[1])
+            self.x = float(lines[2])
+            self.y = float(lines[3])
+            self.health = float(lines[4])
+            self.maxHealth = int(lines[5])
+            self.critchange = float(lines[6])
+            self.speed = float(lines[7])
             self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
     def SaveData(self, path: str):
-        with open(path, "w") as file:
-            file.write(f"{self.level}\n{self.isInShop}\n{self.playerSeed}\n{self.x}\n{self.y}\n{self.health}\n{self.maxHealth}\n{self.critchange}\n{self.speed}")
+        if not os.path.isdir("./saves"):
+            os.mkdir("saves")
+        with open(os.path.abspath(path), "w") as file:
+            file.write(f"{self.level}\n{self.playerSeed}\n{self.x}\n{self.y}\n{self.health}\n{self.maxHealth}\n{self.critchange}\n{self.speed}")
     def __init__(self, seed: Seed):
         self.playerSeed = seed
         self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
@@ -405,14 +415,14 @@ class Player:
         return self.dead
     def Melee(self) -> tuple[bool, bool, list[tuple[float, float]]]:
         hit: tuple[bool, bool, list[tuple[float, float]]] = [False, False, []]
-        for enemy in self.currentMap.enemys:
+        for enemy in self.currentMap.enemies:
             if abs(math.hypot(self.x-enemy.x, self.y-enemy.y)) >= 2.2:
                 continue
             crit = random.random() < self.critchange
             if crit:
                 hit[2].append((enemy.x+random.random(), enemy.y+random.random(), 1))
             if enemy.Hit(self.strength + (self.strength*0.3 if crit else 0)):
-                self.currentMap.enemys.remove(enemy)
+                self.currentMap.enemies.remove(enemy)
                 hit[1] = True
                 del enemy
             else:
@@ -421,7 +431,7 @@ class Player:
     def Range(self):
         if self.bowCooldown <= 0:
 
-            for enemy in self.currentMap.enemys:
+            for enemy in self.currentMap.enemies:
                 self.bowCooldown=1
                 if abs(math.hypot(self.x-enemy.x, self.y-enemy.y)) >= 10:
                     continue
@@ -459,11 +469,10 @@ class Player:
                 self.currentMap.map[math.floor(self.x+tile[1]), math.floor(self.y+tile[2])] = Tile.FLOOR
                 self.currentMap.GenerateRenderMap()
             elif tile[0]==Tile.EXIT:
-                if len(self.currentMap.enemys)!=0:
+                if len(self.currentMap.enemies)!=0:
                     self.errorFade = True
                 else:
                     self.nextMapFade = True
-            
     def Collide(self, x: float, y: float) -> bool:
         return self.currentMap.GetTile(math.floor(x+1.5/RAW_TILE_SIZE), math.floor(y+7.5/RAW_TILE_SIZE)) in ([Tile.EMPTY, Tile.CHEST] if not self.currentMap.chestState else [Tile.EMPTY])
     def Move(self, x: float, y: float):
@@ -479,6 +488,74 @@ class Player:
         self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
         self.x = self.currentMap.startPos[0]
         self.y = self.currentMap.startPos[1]
+    def Reset(self):
+        self.playerSeed.Reset()
+        self.maxHealth = 10
+        self.health = self.maxHealth
+        self.speed = 4
+        self.strength = 1
+        self.bowCooldown = 0
+        self.drops = []
+        self.level = 0
+        self.errorFade = self.nextMapFade = self.hasMapOpen = self.facing = self.dead = False
+        
+        self.currentMap = Map(self.level, self.playerSeed, 10, bandageCount=self.AmountBandages())
+        self.x = self.currentMap.startPos[0]
+        self.y = self.currentMap.startPos[1]
+        
+
+class Menu:
+    opened: bool = True
+    cursor: int = 0
+    current: str = "Main"
+    _mainmenu: list[str] = ["New Game", "Load Game", "Save Game", "Exit"]
+    def Select(self) -> str:
+        if self.current == "Main":
+            if self.cursor == 0 or self.cursor == 3:
+                self.opened = False
+                if self.cursor == 0:
+                    return "n"
+                else:
+                    return "e"
+            elif self.cursor == 1:
+                self.cursor = 0
+                self.current = "Load Game"
+            elif self.cursor == 2:
+                self.cursor = 0
+                self.current = "Save Game"
+        elif self.current == "Load Game":
+            self.opened = False
+            if self.cursor == 0:
+                return "l1"
+            elif self.cursor == 1:
+                return "l2"
+            elif self.cursor == 2:
+                return "l3"
+        elif self.current == "Save Game":
+            self.opened = False
+            if self.cursor == 0:
+                return "s1"
+            elif self.cursor == 1:
+                return "s2"
+            elif self.cursor == 2:
+                return "s3"
+        return ""
+    def Back(self):
+        self.current = "Main"
+    def Up(self):
+        if self.cursor-1 >= 0:
+            self.cursor -= 1
+    def Down(self):
+        if self.current == "Main" and self.cursor+1 < len(self._mainmenu):
+            self.cursor += 1
+        elif self.cursor+1 < 3: 
+            self.cursor += 1
+    def getRenderText(self) -> list[tuple[str, bool]]:
+        if self.current == "Main":
+            return [("New Game", self.cursor==0), ("Load Game", self.cursor==1), ("Save Game", self.cursor==2), ("Exit", self.cursor==3)]
+        else:
+            return [("Game 1", self.cursor==0), ("Game 2", self.cursor==1), ("Game 3", self.cursor==2)]
+
 
 if __name__ == "__main__":
     print(f"Dungeoneer\n{'  '.join([Tile.TYPES[key]+' = '+key for key in Tile.TYPES])}")
@@ -486,3 +563,5 @@ if __name__ == "__main__":
     print("Using seed: "+str(seed))
     map: Map = Map(0, seed, 20, 2)
     print(map.toMap())
+
+# Made by: @dedouwe26 (0xDED)
