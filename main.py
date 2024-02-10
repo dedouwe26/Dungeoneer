@@ -416,6 +416,7 @@ class Dungeoneer:
                 self.moveRight = False
     def menuEvent(self, event: str):
         if event == "n":
+            self.deathAlphaLevel = 0
             if self.player==None:
                 self.player = Player(Seed())
             else:

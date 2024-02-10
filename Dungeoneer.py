@@ -466,7 +466,7 @@ class Player:
                 self.currentMap.GenerateRenderMap()
             elif tile[0]==Tile.BANDAGE:
                 self.Heal()
-                self.currentMap.map[math.floor(self.x+tile[1]), math.floor(self.y+tile[2])] = Tile.FLOOR
+                self.currentMap.map[math.floor(self.x+tile[1])][math.floor(self.y+tile[2])].type = Tile.FLOOR
                 self.currentMap.GenerateRenderMap()
             elif tile[0]==Tile.EXIT:
                 if len(self.currentMap.enemies)!=0:
