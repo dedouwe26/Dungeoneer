@@ -1,6 +1,32 @@
 # Dungeoneer
 Dungeoneer is an infinite dungeon game with generated dungeons. Generate random levels or use a seed.
 It's built in python and can be played on a pc.
+## how to play
+Keys:
+W: up (menu)
+A: to the left
+S: down (menu)
+D: to the right
+Q: sword stroke
+E: arrow shooting
+R: open map
+F: Open chest, pick up bandage, drink potion, select menu, next level at exit.
+ESC: Open menu
+ 
+Go to next level: Kill all enemies (on map: a face) and go to exit.
+ 
+In game:
+Bottom left you will see a bar with your lives, next to it in yellow you will see your maximum lives.
+Above the life bar you will see your speed and above that you will see the critical chance (for extra strength on a sword strike) and above that you will see your strength.
+Bottom right is your level and top center is the number of enemies left.
+ 
+Map:
+Face: enemy
+Arrow: Player
+Chest: chest
+Cross: exit
+Plus: Bandage
+stairs: entrance
 ## Usage
 You can use the code in the generator folder in C# and in Python.
 You must add proper credit.
