@@ -62,7 +62,7 @@ namespace Dungeoneer
                     return '\0';
             }
         }
-}
+    }
     
     public class Map
     {
