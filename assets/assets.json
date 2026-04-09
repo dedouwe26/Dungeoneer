@@ -1,0 +1,325 @@
+{
+	"tilesets": [
+		{
+			"source": "./tileset.png",
+			"tilesize": 16,
+			"tiles": {
+				"healthbackground": {
+					"x": 5,
+					"y": 2,
+					"w": 3,
+					"rawh": 8
+				},
+				"healthforeground": {
+					"x": 5,
+					"rawy": 40,
+					"w": 3,
+					"rawh": 8
+				},
+				"fullhealth": {
+					"x": 3,
+					"y": 0,
+					"w": 3,
+					"rawh": 8
+				},
+				"health": {
+					"x": 3,
+					"rawy": 8,
+					"w": 3,
+					"rawh": 8
+				},
+				"shadowpatchbottom": {
+					"x": 0,
+					"y": 0
+				},
+				"shadowpatchtop": {
+					"x": 1,
+					"y": 0
+				},
+				"shadowpatchright": {
+					"x": 2,
+					"y": 0
+				},
+				"shadowpatchleft": {
+					"x": 0,
+					"y": 1
+				},
+				"exit": {
+					"x": 1,
+					"y": 1
+				},
+				"entrance": {
+					"x": 2,
+					"y": 1
+				},
+				"wallleft": {
+					"x": 3,
+					"y": 1
+				},
+				"wall": {
+					"x": 4,
+					"y": 1
+				},
+				"wallright": {
+					"x": 5,
+					"y": 1
+				},
+				"wallboth": {
+					"x": 7,
+					"y": 3
+				},
+				"goldsword": {
+					"x": 6,
+					"y": 0,
+					"w": 1,
+					"h": 2
+				},
+				"ironsword": {
+					"x": 7,
+					"y": 0,
+					"w": 1,
+					"h": 2
+				},
+				"arrow": {
+					"x": 4,
+					"y": 3
+				},
+				"crit": {
+					"x": 0,
+					"y": 4
+				},
+				"closedchest": {
+					"x": 0,
+					"y": 2
+				},
+				"emptychest": {
+					"x": 0,
+					"y": 3
+				},
+				"player": {
+					"x": 1,
+					"y": 4
+				},
+				"armoredplayer": {
+					"x": 1,
+					"y": 3
+				},
+				"redpotion": {
+					"x": 2,
+					"y": 4
+				},
+				"greenpotion": {
+					"x": 3,
+					"y": 4
+				},
+				"yellowpotion": {
+					"x": 4,
+					"y": 4
+				},
+				"bluepotion": {
+					"x": 4,
+					"y": 5
+				},
+				"bandage": {
+					"x": 3,
+					"y": 3
+				},
+				"floor": {
+					"x": 1,
+					"y": 2
+				},
+				"rightsideedge": {
+					"x": 2,
+					"y": 2
+				},
+				"leftsideedge": {
+					"x": 3,
+					"y": 2
+				},
+				"topedge": {
+					"x": 4,
+					"y": 2
+				},
+				"innercornerbottomleft": {
+					"x": 5,
+					"y": 3
+				},
+				"innercornerbottomright": {
+					"x": 6,
+					"y": 3
+				},
+				"outercornertopleft": {
+					"x": 5,
+					"y": 4
+				},
+				"outercornertopright": {
+					"x": 6,
+					"y": 4
+				},
+				"outercornerbottomleft": {
+					"x": 5,
+					"y": 5
+				},
+				"outercornerbottomright": {
+					"x": 6,
+					"y": 5
+				},
+				"greenenemy": {
+					"variants": [
+						{
+							"x": 0,
+							"y": 5,
+							"w": 1,
+							"h": 1
+						},
+						{
+							"x": 1,
+							"y": 5,
+							"w": 1,
+							"h": 1
+						},
+						{
+							"x": 2,
+							"y": 5,
+							"w": 1,
+							"h": 1
+						},
+						{
+							"x": 0,
+							"y": 6,
+							"w": 1,
+							"h": 1
+						},
+						{
+							"x": 1,
+							"y": 6,
+							"w": 1,
+							"h": 1
+						},
+						{
+							"x": 3,
+							"y": 5,
+							"w": 1,
+							"h": 1
+						}
+					]
+				},
+				"redenemy": {
+					"variants": [
+						{
+							"x": 6,
+							"y": 6,
+							"w": 1,
+							"h": 1
+						},
+						{
+							"x": 7,
+							"y": 6,
+							"w": 1,
+							"h": 1
+						},
+						{
+							"x": 2,
+							"y": 6,
+							"w": 1,
+							"h": 1
+						},
+						{
+							"x": 3,
+							"y": 6,
+							"w": 1,
+							"h": 1
+						},
+						{
+							"x": 4,
+							"y": 6,
+							"w": 1,
+							"h": 1
+						},
+						{
+							"x": 5,
+							"y": 6,
+							"w": 1,
+							"h": 1
+						}
+					]
+				}
+			}
+		},
+		{
+			"source": "./maptileset.png",
+			"tilesize": 8,
+			"tiles": {
+				"floor": {
+					"x": 1,
+					"y": 0
+				},
+				"player": {
+					"x": 2,
+					"y": 0
+				},
+				"enemy": {
+					"x": 3,
+					"y": 0
+				},
+				"exit": {
+					"x": 4,
+					"y": 0
+				},
+				"chest": {
+					"x": 5,
+					"y": 0
+				},
+				"bandage": {
+					"x": 4,
+					"y": 1
+				},
+				"entrance": {
+					"x": 5,
+					"y": 1
+				},
+				"bottomedge": {
+					"x": 0,
+					"y": 1
+				},
+				"rightedge": {
+					"x": 1,
+					"y": 1
+				},
+				"leftedge": {
+					"x": 0,
+					"y": 2
+				},
+				"topedge": {
+					"x": 1,
+					"y": 2
+				},
+				"topleftcorner": {
+					"x": 2,
+					"y": 1
+				},
+				"toprightcorner": {
+					"x": 1,
+					"y": 0
+				},
+				"bottomleftcorner": {
+					"x": 2,
+					"y": 2
+				},
+				"bottomrightcorner": {
+					"x": 3,
+					"y": 2
+				}
+			}
+		}
+	],
+	"logo": "./logo.png",
+	"font": "./PublicPixel.ttf",
+	"fontsize": 27,
+	"sounds": {
+		"hit": "./hit.wav",
+		"kill": "./kill.wav",
+		"levelup": "./levelup.wav",
+		"pickup": "./pickup.wav"
+	}
+}
