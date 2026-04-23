@@ -5,7 +5,6 @@ from assetloader import AssetLoader
 import config
 from game import Game
 from savemanager import SaveManager
-from screen import MainScreen, MapScreen, MenuScreen, Screen
 
 
 class Main:
@@ -18,7 +17,7 @@ class Main:
     last_tick: int = 0
     last_frame: int = 0
     event_queue: list[int]
-    current_screen: Screen
+    paused: bool
 
     def __init__(self) -> None:
         # Initialize Pygame.
@@ -26,6 +25,7 @@ class Main:
         pygame.mixer.init()
 
         self.clock = pygame.time.Clock()
+        self.paused = False
 
         # Load assets.
         self.asset_loader = AssetLoader(Path("./assets/assets.json"))
@@ -41,8 +41,11 @@ class Main:
             return
         sound.play()
 
-    def is_paused(self) -> bool:
-        return isinstance(self.current_screen, MenuScreen)
+    def pause(self):
+        self.paused = True
+
+    def resume(self):
+        self.paused = False
 
     def start(self):
         one_over_tps: float = 1 / config.TPS
@@ -62,9 +65,6 @@ class Main:
                 self.render()
                 self.last_frame = 0
 
-    def change_screen(self, new_screen: Screen):
-        self.current_screen = new_screen
-
     def handle_keydown(self, key: int):
         if not self.is_paused():
             match key:
@@ -74,6 +74,7 @@ class Main:
                     self.change_screen(MapScreen(self))
         elif key == config.K_MOVE_RIGHT:
             self.change_screen(MainScreen(self))
+
         self.current_screen.keydown(key)
 
     def fetch_events(self):
@@ -118,3 +119,7 @@ class Main:
     def stop(self):
         self.is_running = False
         pygame.quit()
+
+
+if __name__ == "__main__":
+    Main().start()

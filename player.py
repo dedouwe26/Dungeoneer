@@ -1,6 +1,8 @@
 import math
 from typing import Callable
 
+import config
+
 
 class Player:
     x: float
@@ -40,7 +42,7 @@ class Player:
 
     def damage(self, damage: float):
         if damage > 0:
-            self.on_sound(Game.PLAYER_DAMAGE_SOUND)
+            self.on_sound(config.PLAYER_DAMAGE_SOUND)
         self.health -= damage
 
     def move(self, dx: float, dy: float):

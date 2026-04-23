@@ -6,19 +6,20 @@ from pygame import Color, Surface
 from assetloader import AssetLoader
 import config
 from game import Game
+from main import Main
 
 
 class Screen(ABC):
     width: int
     height: int
-    asset_loader: AssetLoader
+    assets: AssetLoader
     game: Game
     display: Surface
 
     def __init__(self, asset_loader: AssetLoader, game: Game, display: Surface) -> None:
         super().__init__()
         self.display = display
-        self.asset_loader = asset_loader
+        self.assets = asset_loader
         self.game = game
         self.width, self.height = self.display.get_size()
 
