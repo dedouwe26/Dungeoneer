@@ -2,6 +2,7 @@ import os
 import json
 from pathlib import Path
 
+from config import DEFAULT_SAVE_NAMES
 from game import Game
 
 
@@ -14,9 +15,14 @@ class SaveManager:
 
     def fetch_saves(self) -> list[str]:
         filenames = next(os.walk(self.save_path), (None, None, []))[2]
+        if len(filenames) == 0:
+            for name in DEFAULT_SAVE_NAMES:
+                with open(self.save_path / Path(name + ".json"), "w") as f:
+                    json.dump({}, f)
+
         return [Path(name).stem for name in filenames]
 
-    def store(self, game: Game, save_name: str):
+    def save(self, game: Game, save_name: str):
         # TODO: Implement for game.
         self.latest_save = save_name
         path = self.save_path / Path(save_name + ".json")

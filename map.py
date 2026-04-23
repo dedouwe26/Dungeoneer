@@ -1,18 +1,31 @@
+from enum import Enum
 from random import Random
-from typing import Final, Generator
+from typing import Generator
 
-from game import Tile
+from config import (
+    AMOUNT_ROOMS,
+    HALLWAY_ROOM_CHANCE,
+    HALLWAY_ROOM_MAX_SIZE,
+    HALLWAY_ROOM_MIN_SIZE,
+    ROOM_MAX_SIZE,
+    ROOM_MIN_SIZE,
+    SIZE,
+)
+
+
+class Tile(Enum):
+    empty = 0
+    floor = 1
+    chest = 2
+    entrance = 3
+    exit = 4
+    bandage = 5
+
+    def has_ground(self) -> bool:
+        return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage)
 
 
 class Map:
-    SIZE: Final[int] = 80
-    AMOUNT_ROOMS: Final[int] = 15
-    ROOM_MIN_SIZE: Final[int] = 8
-    ROOM_MAX_SIZE: Final[int] = 15
-    HALLWAY_ROOM_CHANCE: Final[float] = 0.1
-    HALLWAY_ROOM_MIN_SIZE: Final[int] = 2
-    HALLWAY_ROOM_MAX_SIZE: Final[int] = 8
-
     random: Random
     level: int
     map: list[list[Tile]]
@@ -22,18 +35,18 @@ class Map:
     def __init__(self, random: Random, level: int) -> None:
         self.random = random
         self.level = level
-        self.map = [[Tile.empty for _ in range(self.SIZE)] for _ in range(self.SIZE)]
+        self.map = [[Tile.empty for _ in range(SIZE)] for _ in range(SIZE)]
 
     def generate(self, bandage_count: int):
         rooms = []
 
         # Generate rooms
-        for _ in range(self.AMOUNT_ROOMS):
-            width = self.random.randint(self.ROOM_MIN_SIZE, self.ROOM_MAX_SIZE)
-            height = self.random.randint(self.ROOM_MIN_SIZE, self.ROOM_MAX_SIZE)
+        for _ in range(AMOUNT_ROOMS):
+            width = self.random.randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
+            height = self.random.randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
 
-            x = self.random.randint(0, self.SIZE - width)
-            y = self.random.randint(0, self.SIZE - height)
+            x = self.random.randint(0, SIZE - width)
+            y = self.random.randint(0, SIZE - height)
 
             # No overlapping (with 1 between)
             while any(
@@ -43,10 +56,10 @@ class Map:
                 and y - 1 + height + 1 > room[1]
                 for room in rooms
             ):
-                width = self.random.randint(self.ROOM_MIN_SIZE, self.ROOM_MAX_SIZE)
-                height = self.random.randint(self.ROOM_MIN_SIZE, self.ROOM_MAX_SIZE)
-                x = self.random.randint(0, self.SIZE - width)
-                y = self.random.randint(0, self.SIZE - height)
+                width = self.random.randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
+                height = self.random.randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
+                x = self.random.randint(0, SIZE - width)
+                y = self.random.randint(0, SIZE - height)
 
             rooms.append((x, y, width, height))
 
@@ -70,12 +83,12 @@ class Map:
                 x0 += 1 if x0 < x1 else -1
 
                 # Hallway room
-                if self.random.random() < self.HALLWAY_ROOM_CHANCE / 2:
+                if self.random.random() < HALLWAY_ROOM_CHANCE / 2:
                     hallway_room_width = self.random.randint(
-                        self.HALLWAY_ROOM_MIN_SIZE, self.HALLWAY_ROOM_MAX_SIZE
+                        HALLWAY_ROOM_MIN_SIZE, HALLWAY_ROOM_MAX_SIZE
                     )
                     hallway_room_height = self.random.randint(
-                        self.HALLWAY_ROOM_MIN_SIZE, self.HALLWAY_ROOM_MAX_SIZE
+                        HALLWAY_ROOM_MIN_SIZE, HALLWAY_ROOM_MAX_SIZE
                     )
                     hallway_room_x = x0 - hallway_room_width // 2
                     hallway_room_y = y0 - hallway_room_height // 2
@@ -91,12 +104,12 @@ class Map:
                 y0 += 1 if y0 < y1 else -1
 
                 # Hallway room
-                if self.random.random() < self.HALLWAY_ROOM_CHANCE / 2:
+                if self.random.random() < HALLWAY_ROOM_CHANCE / 2:
                     hallway_room_width = self.random.randint(
-                        self.HALLWAY_ROOM_MIN_SIZE, self.HALLWAY_ROOM_MAX_SIZE
+                        HALLWAY_ROOM_MIN_SIZE, HALLWAY_ROOM_MAX_SIZE
                     )
                     hallway_room_height = self.random.randint(
-                        self.HALLWAY_ROOM_MIN_SIZE, self.HALLWAY_ROOM_MAX_SIZE
+                        HALLWAY_ROOM_MIN_SIZE, HALLWAY_ROOM_MAX_SIZE
                     )
                     hallway_room_x = x0 - hallway_room_width // 2
                     hallway_room_y = y0 - hallway_room_height // 2
@@ -127,8 +140,8 @@ class Map:
         # Chest
         floor_positions = [
             (i, j)
-            for i in range(self.SIZE)
-            for j in range(self.SIZE)
+            for i in range(SIZE)
+            for j in range(SIZE)
             if self.map[i][j] == Tile.floor
         ]
 
@@ -144,7 +157,7 @@ class Map:
         for position in bandages:
             self.map[position[0]][position[1]] = Tile.bandage
 
-    def enumerate(self) -> Generator[tuple[int, int, Tile]]:
+    def enumerate(self) -> Generator[tuple[int, int, Tile], None, None]:
         for x, column in enumerate(self.map):
             for y, tile in enumerate(column):
                 yield (x, y, tile)

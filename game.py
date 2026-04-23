@@ -4,11 +4,12 @@
 # in this codebase.
 
 
-from enum import Enum
 from random import Random
-from typing import Any, Final
+from typing import Any, Callable
 
-from map import Map
+from config import LEVEL_UP_SOUND
+from enemy import Enemy
+from map import Map, Tile
 from player import Player
 
 
@@ -16,60 +17,9 @@ class Projectile:
     pass
 
 
-class Enemy:
-    # TODO: Collision, also for player, through Game.???
-    x: float
-    y: float
-    strength: float
-    attack_cooldown: int = 0
-    attack_speed: int
-    attack_range: float
-    speed: float
-
-    def __init__(self, x: float, y: float, level: int, random: Random) -> None:
-        self.x = x
-        self.y = y
-        self.strength = 1  # TODO: make formula
-        self.speed = 1  # TODO: make formula
-        self.attack_range = 2 # TODO: You know the drill...
-        self.attack_speed = 10 # TODO: I don't need to type it anymore. Lower is faster...
-
-    def attack(self, player: Player):
-        if self.attack_cooldown != 0:
-            return
-
-        self.attack_cooldown = self.attack_speed
-        player.damage(self.strength)
-
-    def move_closer_to(self, x: float, y: float):
-        distance = self.speed / 
-
-    def tick(self, deltatime: float, player: Player):
-        if self.attack_cooldown > 0:
-            self.attack_cooldown -= 1
-
-        d = player.distance_from(self.x, self.y)
-        if self.attack_range < d < 10:
-            self.move_closer_to(player.x, player.y)
-        if self.attack_range >= d:
-            self.attack(player)
-class Tile(Enum):
-    empty = 0
-    floor = 1
-    chest = 2
-    entrance = 3
-    exit = 4
-    bandage = 5
-
-    def has_ground(self) -> bool:
-        return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage)
-
-
 # This class must supply an interface
 # used by the rendering of the screens.
 class Game:
-    TPS: Final[int] = 60
-
     level: int
     current_random_state: tuple[Any, ...]
     random: Random
@@ -77,8 +27,13 @@ class Game:
     player: Player
     enemies: list[Enemy]
     projectiles: list[Projectile]
+    on_sound: Callable[[str], None]
 
-    def __init__(self) -> None:
+    def __init__(self, on_sound: Callable[[str], None]) -> None:
+        self.on_sound = on_sound
+
+    def new_game(self):
+        self.player = Player(self.on_sound, self.collide)
         self.level = 1
         self.random = Random()
         self.current_random_state = self.random.getstate()
@@ -94,7 +49,14 @@ class Game:
                 [(x, y) for x, y, t in self.current_map.enumerate() if t == Tile.floor]
             )
             self.enemies.append(
-                Enemy(position[0] + 0.5, position[1] + 0.5, self.level, self.random)
+                Enemy(
+                    position[0] + 0.5,
+                    position[1] + 0.5,
+                    self.random,
+                    self.level,
+                    self.on_sound,
+                    self.collide,
+                )
             )
 
     def can_level_up(self):
@@ -112,8 +74,28 @@ class Game:
         self.current_random_state = self.random.getstate()
         self.projectiles = []
         self.generate()
-        self.player.teleport(self.current_map.start)
+        self.on_sound(LEVEL_UP_SOUND)
+        self.player.teleport(self.current_map.start[0], self.current_map.start[1])
+
+    def collide(self, x: float, y: float) -> bool:
+        return False
+
+    def interact(self):
+        # TODO: Check for chests, potions, exits, etc...
+        pass
+
+    def ranged(self):
+        # TODO: Find closest enemy.
+        # TODO: Check if in range.
+        # TODO: Shoot! + Cooldown
+        pass
+
+    def melee(self):
+        # TODO: Swing sword.
+        # TODO: Check for enemies.
+        # TODO: Cooldown.
+        pass
 
     def tick(self, deltatime: float):
         for enemy in self.enemies:
-            enemy.tick(deltatime)
+            enemy.tick(deltatime, self.player)

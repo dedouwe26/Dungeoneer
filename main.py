@@ -1,31 +1,18 @@
 import math
 from pathlib import Path
-from typing import Final
 import pygame
 from assetloader import AssetLoader
+import config
 from game import Game
 from savemanager import SaveManager
 from screen import MainScreen, MapScreen, MenuScreen, Screen
 
 
 class Main:
-    K_MOVE_UP: Final[int] = pygame.K_w
-    K_MOVE_LEFT: Final[int] = pygame.K_a
-    K_MOVE_DOWN: Final[int] = pygame.K_s
-    K_MOVE_RIGHT: Final[int] = pygame.K_d
-    K_OPEN_MAP: Final[int] = pygame.K_r
-    K_CLOSE: Final[int] = pygame.K_ESCAPE
-    K_OPEN_MENU: Final[int] = K_CLOSE
-    K_INTERACT: Final[int] = pygame.K_f
-    M_ATTACK: Final[int] = 0
-    M_FIRE: Final[int] = 1
-
-    FPS: Final[int] = 144
-
     asset_loader: AssetLoader
     save_manager: SaveManager
     game: Game
-    game_display: pygame.Surface
+    display: pygame.Surface
     clock: pygame.time.Clock
     is_running: bool = True
     last_tick: int = 0
@@ -46,14 +33,20 @@ class Main:
         pygame.display.set_caption("Dungeoneer")
         pygame.display.set_icon(self.asset_loader.get_logo())
 
-        self.game = Game()
+        self.game = Game(self.on_sound)
+
+    def on_sound(self, sound_name: str):
+        sound = self.asset_loader.get_sound(sound_name)
+        if sound is None:
+            return
+        sound.play()
 
     def is_paused(self) -> bool:
         return isinstance(self.current_screen, MenuScreen)
 
     def start(self):
-        one_over_tps: float = 1 / Game.TPS
-        one_over_fps: float = 1 / self.FPS
+        one_over_tps: float = 1 / config.TPS
+        one_over_fps: float = 1 / config.FPS
         while self.is_running:
             self.fetch_events()
 
@@ -75,11 +68,11 @@ class Main:
     def handle_keydown(self, key: int):
         if not self.is_paused():
             match key:
-                case self.K_OPEN_MENU:
+                case config.K_OPEN_MENU:
                     self.change_screen(MenuScreen(self))
-                case self.K_OPEN_MAP:
+                case config.K_OPEN_MAP:
                     self.change_screen(MapScreen(self))
-        elif key == self.K_MOVE_RIGHT:
+        elif key == config.K_MOVE_RIGHT:
             self.change_screen(MainScreen(self))
         self.current_screen.keydown(key)
 
@@ -99,13 +92,13 @@ class Main:
         keystate = pygame.key.get_pressed()
         dx = 0
         dy = 0
-        if keystate[self.K_MOVE_DOWN]:
+        if keystate[config.K_MOVE_DOWN]:
             dy = 1
-        if keystate[self.K_MOVE_LEFT]:
+        if keystate[config.K_MOVE_LEFT]:
             dx = -1
-        if keystate[self.K_MOVE_RIGHT]:
+        if keystate[config.K_MOVE_RIGHT]:
             dx += 1
-        if keystate[self.K_MOVE_UP]:
+        if keystate[config.K_MOVE_UP]:
             dy += -1
         if dx != 0 or dy != 0:
             d = math.hypot(dx, dy)

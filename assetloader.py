@@ -1,15 +1,11 @@
 import json
 from pathlib import Path
 import random
-from typing import Final
 
 import pygame
 
 
 class AssetLoader:
-    MAIN_TILESET: Final[int] = 0
-    MAP_TILESET: Final[int] = 1
-
     logo: pygame.Surface
     font: pygame.font.Font
     tilesets: list[

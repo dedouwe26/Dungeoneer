@@ -129,6 +129,8 @@ class Dungeoneer:
                     if self.player.Hit(enemy.strength):
                         pygame.mixer.Sound.play(self.killSound)
 
+        # Rendering...
+
         self.gameDisplay.fill(
             (219, 207, 151) if self.player.hasMapOpen else (28, 17, 23)
         )
