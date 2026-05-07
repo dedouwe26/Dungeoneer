@@ -1,110 +1,171 @@
-from abc import ABC, abstractmethod
+from abc import ABC
+import math
 from typing import Final
 
-from pygame import Color, Surface
+from pygame import Color, Rect, Surface
+import pygame
 
+from application import Application
 from assetloader import AssetLoader
 import config
 from game import Game
-from main import Main
+from map import Tile
+from savemanager import SaveManager
 
 
 class Screen(ABC):
+    assets: AssetLoader
+    saves: SaveManager
+    game: Game
+    app: Application
+    display: Surface
     width: int
     height: int
-    assets: AssetLoader
-    game: Game
-    display: Surface
 
-    def __init__(self, asset_loader: AssetLoader, game: Game, display: Surface) -> None:
+    def __init__(self, app: Application) -> None:
         super().__init__()
-        self.display = display
-        self.assets = asset_loader
-        self.game = game
+        print("screen initialized")
+        self.app = app
+        self.display = app.display
         self.width, self.height = self.display.get_size()
+        self.assets = app.asset_loader
+        self.saves = app.save_manager
+        self.game = app.game
+        app.on_tick = self.tick
+        app.on_render = self.render
+        app.on_keydown = self.keydown
+        app.on_keyup = self.keyup
+        app.on_game_event = self.on_event
 
-    @abstractmethod
+    def on_event(self, event_name: str):
+        self.app.play_sound(event_name)
+
     def move(self, dx: float, dy: float):
         pass
 
-    @abstractmethod
-    def render(self):
+    def render(self, deltatime: float):
         pass
 
-    @abstractmethod
+    def tick(self, deltatime: float):
+        dir = self.app.handle_movement()
+        if dir != (0, 0):
+            self.move(dir[0], dir[1])
+
+        self.game.tick(deltatime)
+
     def keydown(self, key: int):
         pass
 
-    @abstractmethod
     def keyup(self, key: int):
         pass
+
+
+current_screen: Screen
+
+
+def switch_screen(new_screen: Screen):
+    global current_screen
+    current_screen = new_screen
 
 
 class MainScreen(Screen):
-    def move(self, dx: float, dy: float):
+    def calculate_screen(self, x: float, y: float) -> tuple[float, float]:
+        px = self.game.player.x
+        py = self.game.player.y
+        return (x - (px - self.width / 2), y - (py - self.height / 2))
+
+    def render_in_world(self, x: int, y: int, surface: Surface, rect: Rect):
+        screen = self.calculate_screen(x, y)
+        self.display.blit(surface, screen, rect)
+
+    def render_tile(self, x: int, y: int, surface: Surface, tile: Tile):
+        rect = self.assets.get_tile(config.MAIN_TILESET, tile.value)
+        if rect is None:
+            if tile != Tile.empty:
+                print(f"unknown tile: {tile.value}")
+            return
+        if tile.has_ground() and tile != Tile.floor:
+            self.render_tile(x, y, surface, Tile.floor)
+        self.render_in_world(x, y, surface, rect)
+
+    def render_map(self):
+        surface = self.assets.get_tileset_surface(config.MAIN_TILESET)
+        if surface is None:
+            print(f"unknown tileset: MAIN_TILESET: {config.MAIN_TILESET}")
+            return
+        for x, y, tile in self.game.current_map.enumerate():
+            self.render_tile(x, y, surface, tile)
         pass
 
-    def render(self):
+    def render_enemies(self):
         pass
 
-    def keydown(self, key: int):
+    def render_projectiles(self):
         pass
 
-    def keyup(self, key: int):
+    def render_player(self):
+        tile = self.assets.get_tile(config.MAIN_TILESET, Tile.floor.value)
+        surface = self.assets.get_tileset_surface(config.MAIN_TILESET)
+        if tile is None or surface is None:
+            print("aJJHKFDKJF")
+            return
+        self.display.blit(surface, surface.get_rect())  # , (0, 0), tile)
+
+    def render_ui(self):
         pass
+
+    def render(self, deltatime: float):
+        self.display.fill(config.BACKGROUND)
+        self.render_map()
+        self.render_enemies()
+        self.render_projectiles()
+        self.render_player()
+        # TODO: Render effects
+        self.render_ui()
 
 
 class MapScreen(Screen):
-    def move(self, dx: float, dy: float):
-        pass
-
-    def render(self):
-        pass
-
-    def keydown(self, key: int):
-        pass
-
-    def keyup(self, key: int):
-        pass
+    pass
 
 
 class MenuScreen(Screen):
-    BACKGROUND: Final[Color] = Color(28, 17, 23)
+    FOREGROUND: Final[Color] = Color(219, 207, 151)
     MENU: Final[int] = 0
     LOAD_GAME: Final[int] = 1
     SAVE_GAME: Final[int] = 2
     state: int
     selected: int
-    save_names: list[str]
+    entries: list[str]
 
-    def __init__(self, asset_loader: AssetLoader, game: Game, display: Surface) -> None:
-        super().__init__(asset_loader, game, display)
+    def __init__(self, app: Application) -> None:
+        super().__init__(app)
         self.change_state(self.MENU)
 
     def render_item(self, index: int, text: str):
-        pass
+        self.assets.font.set_underline(self.selected == index)
+        surface = self.assets.font.render(
+            text, False, self.FOREGROUND, config.BACKGROUND
+        )
+        self.display.blit(
+            surface, surface.get_rect(centerx=self.width / 2, top=100 + index * 40)
+        )
 
-    def render_menu(self):
-        self.render_item(0, "New Game ")
-        self.render_item(1, "Load Game")
-        self.render_item(2, "Save Game")
-        self.render_item(3, "  Quit   ")
-
-    def render_list(self):
-        for i, name in enumerate(self.save_names):
+    def render_entries(self):
+        for i, name in enumerate(self.entries):
             self.render_item(i, name)
 
-    def render(self):
-        self.display.fill(self.BACKGROUND)
+    def tick(self, deltatime: float):
+        pass
+
+    def render(self, deltatime: float):
+        self.display.fill(config.BACKGROUND)
         icon = self.assets.get_logo()
-        self.display.blit(icon, icon.get_rect(center_x=self.width / 2, top=16))
-        match self.state:
-            case self.MENU:
-                self.render_menu()
-            case self.LOAD_GAME:
-                self.render_list()
-            case self.SAVE_GAME:
-                self.render_list()
+        icon = pygame.transform.scale(
+            icon, ((icon.get_width() / icon.get_height()) * 100, 100)
+        )
+        rect = icon.get_rect(centerx=self.width / 2, top=16)
+        self.display.blit(icon, rect)
+        self.render_entries()
 
     def keydown(self, key: int):
         match key:
@@ -119,43 +180,49 @@ class MenuScreen(Screen):
                             case 2:
                                 self.change_state(self.SAVE_GAME)
                             case 3:
-                                self.main.stop()
+                                self.app.stop()
                     case self.LOAD_GAME:
                         self.load_game()
                     case self.SAVE_GAME:
                         self.save_game()
             case config.K_MOVE_UP:
-                pass
+                if self.selected > 0:
+                    self.selected -= 1
             case config.K_MOVE_DOWN:
-                pass
+                if self.selected < len(self.entries):
+                    self.selected += 1
+            case config.K_CLOSE:
+                if self.state == self.MENU:
+                    if self.game.is_initialized:
+                        switch_screen(MainScreen(self.app))
+                else:
+                    self.change_state(self.MENU)
 
     def change_state(self, new_state: int):
         self.selected = 0
         match new_state:
             case self.MENU:
-                self.length = 4
+                self.entries = ["New Game ", "Load Game", "Save Game", "  Quit   "]
             case self.SAVE_GAME:
-                self.save_names = self.save_manager.fetch_saves()
-                self.length = len(self.save_names)
+                self.entries = self.saves.fetch_saves()
             case self.LOAD_GAME:
-                self.save_names = self.save_manager.fetch_saves()
-                self.length = len(self.save_names)
+                self.entries = self.saves.fetch_saves()
         self.state = new_state
 
     def choose_new_game(self):
         self.game.new_game()
-        self.main.change_screen(MainScreen(self.main))
+        switch_screen(MainScreen(self.app))
 
     def load_game(self):
-        self.main.save_manager.load(self.game(), self.save_names[self.selected])
-        self.main.change_screen(MainScreen(self.main))
+        self.saves.load(self.game, self.entries[self.selected])
+        switch_screen(MainScreen(self.app))
 
     def save_game(self):
-        self.main.save_manager.save(self.game(), self.save_names[self.selected])
+        self.saves.save(self.game, self.entries[self.selected])
         self.change_state(self.MENU)
 
-    def keyup(self, key: int):
-        pass
 
-    def move(self, dx: float, dy: float):
-        pass
+if __name__ == "__main__":
+    app = Application()
+    switch_screen(MenuScreen(app))
+    app.start()

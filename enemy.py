@@ -18,7 +18,7 @@ class Enemy:
     speed: float
     facing: bool
     collide: Callable[[float, float], bool]
-    on_sound: Callable[[str], None]
+    on_event: Callable[[str], None]
 
     def __init__(
         self,
@@ -26,7 +26,7 @@ class Enemy:
         y: float,
         random: Random,
         level: int,
-        on_sound: Callable[[str], None],
+        on_event: Callable[[str], None],
         collide: Callable[[float, float], bool],
     ) -> None:
         self.x = x
@@ -41,11 +41,11 @@ class Enemy:
             10  # TODO: I don't need to type it anymore. Oh and lower is faster...
         )
         self.collide = collide
-        self.on_sound = on_sound
+        self.on_event = on_event
 
     def damage(self, damage: float):
         if damage > 0:
-            self.on_sound(config.ENEMY_DAMAGE_SOUND)
+            self.on_event(config.ENEMY_DAMAGE_EVENT)
         self.health -= damage
 
     def attack(self, player: Player):

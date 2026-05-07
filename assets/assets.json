@@ -317,9 +317,12 @@
 	"font": "./PublicPixel.ttf",
 	"fontsize": 27,
 	"sounds": {
-		"hit": "./hit.wav",
-		"kill": "./kill.wav",
+		"playerhit": "./hit.wav",
+		"enemyhit": "./hit.wav",
+		"playerkill": "./kill.wav",
+		"enemykill": "./kill.wav",
 		"levelup": "./levelup.wav",
+		"deniedlevelup": "./deny.wav",
 		"pickup": "./pickup.wav"
 	}
 }

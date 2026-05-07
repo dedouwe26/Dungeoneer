@@ -14,12 +14,12 @@ from config import (
 
 
 class Tile(Enum):
-    empty = 0
-    floor = 1
-    chest = 2
-    entrance = 3
-    exit = 4
-    bandage = 5
+    empty = "empty"
+    floor = "floor"
+    chest = "closedchest"
+    entrance = "entrance"
+    exit = "exit"
+    bandage = "bandage"
 
     def has_ground(self) -> bool:
         return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage)

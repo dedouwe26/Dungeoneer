@@ -1,20 +1,40 @@
 # We do not care about rendering here,
 # just game logic...
-# This file does not depend on other files
-# in this codebase.
 
-
+import math
 from random import Random
 from typing import Any, Callable
 
-from config import LEVEL_UP_SOUND
+import config
 from enemy import Enemy
 from map import Map, Tile
 from player import Player
 
 
 class Projectile:
-    pass
+    enemy: Enemy
+    angle: float
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float, enemy: Enemy) -> None:
+        self.enemy = enemy
+        self.x = x
+        self.y = y
+
+    def tick(self, deltatime: float) -> bool:
+        dx = self.enemy.x - self.x
+        dy = self.enemy.y - self.y
+        if dx <= config.ARROW_SPEED * deltatime or dy <= config.ARROW_SPEED * deltatime:
+            return True
+        self.angle = math.tanh(dy / dx)
+        # Normalize
+        d = math.hypot(dx, dy)
+        dx /= d
+        dy /= d
+        self.x += deltatime * config.ARROW_SPEED * dx
+        self.y += deltatime * config.ARROW_SPEED * dy
+        return False
 
 
 # This class must supply an interface
@@ -25,18 +45,25 @@ class Game:
     random: Random
     current_map: Map
     player: Player
-    enemies: list[Enemy]
-    projectiles: list[Projectile]
-    on_sound: Callable[[str], None]
+    enemies: list[Enemy] = []
+    projectiles: list[Projectile] = []
+    shoot_cooldown: int = 0
+    melee_cooldown: int = 0
+    on_event: Callable[[str], None]
+    is_initialized: bool = False
 
-    def __init__(self, on_sound: Callable[[str], None]) -> None:
-        self.on_sound = on_sound
+    def __init__(self, on_event: Callable[[str], None]) -> None:
+        self.on_event = on_event
+        print("initialized game")
 
     def new_game(self):
-        self.player = Player(self.on_sound, self.collide)
+        print("new game")
+        self.player = Player(self.on_event, self.collide)
         self.level = 1
         self.random = Random()
         self.current_random_state = self.random.getstate()
+        self.generate()
+        self.is_initialized = True
 
     def calculate_bandage_count(self):
         return self.player.calculate_bandage_count()
@@ -54,10 +81,12 @@ class Game:
                     position[1] + 0.5,
                     self.random,
                     self.level,
-                    self.on_sound,
+                    self.on_event,
                     self.collide,
                 )
             )
+
+        self.player.teleport(self.current_map.start[0], self.current_map.start[1])
 
     def can_level_up(self):
         return (
@@ -74,28 +103,69 @@ class Game:
         self.current_random_state = self.random.getstate()
         self.projectiles = []
         self.generate()
-        self.on_sound(LEVEL_UP_SOUND)
         self.player.teleport(self.current_map.start[0], self.current_map.start[1])
+        self.on_event(config.LEVEL_UP_EVENT)
 
     def collide(self, x: float, y: float) -> bool:
+        # TODO: impl
         return False
 
     def interact(self):
-        # TODO: Check for chests, potions, exits, etc...
+        for x, y in self.player.iterate_neighbouring_tiles():
+            tile = self.current_map.get_tile(x, y)
+            match tile:
+                case Tile.bandage:
+                    self.player.heal(config.BANDAGE_HEAL_AMOUNT)
+                case Tile.exit:
+                    if not self.can_level_up():
+                        self.on_event(config.DENIED_LEVEL_UP_EVENT)
+                        continue
+                    self.level_up()
+                    break
+                case Tile.chest:
+                    self.player.add_trait(self.random)
+                    break
         pass
 
     def ranged(self):
-        # TODO: Find closest enemy.
-        # TODO: Check if in range.
-        # TODO: Shoot! + Cooldown
+        if self.shoot_cooldown > 0:
+            return
+        enemy: Enemy | None = None
+        distance: float | None = None
+        for e in self.enemies:
+            d = self.player.distance_from(e.x, e.y)
+            if d > config.SHOOTING_RANGE and (distance is None or d > distance):
+                distance = d
+                enemy = e
+
+        if enemy is not None:
+            self.projectiles.append(Projectile(self.player.x, self.player.y, enemy))
+
+        self.shoot_cooldown = config.SHOOT_COOLDOWN
         pass
 
     def melee(self):
-        # TODO: Swing sword.
-        # TODO: Check for enemies.
-        # TODO: Cooldown.
+        if self.melee_cooldown > 0:
+            return
+        self.on_event(config.SWING_SWORD_EVENT)
+        for enemy in self.enemies:
+            d = self.player.distance_from(enemy.x, enemy.y)
+            if d <= config.MELEE_RANGE:
+                enemy.damage(self.player.strength)
+
+        self.melee_cooldown = config.MELEE_COOLDOWN
         pass
 
     def tick(self, deltatime: float):
+        if self.shoot_cooldown > 0:
+            self.shoot_cooldown -= 1
+        if self.melee_cooldown > 0:
+            self.melee_cooldown -= 1
+
         for enemy in self.enemies:
             enemy.tick(deltatime, self.player)
+
+        for projectile in self.projectiles:
+            if projectile.tick(deltatime):
+                projectile.enemy.damage(self.player.strength)
+                self.projectiles.remove(projectile)

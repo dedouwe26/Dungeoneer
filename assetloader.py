@@ -10,8 +10,8 @@ class AssetLoader:
     font: pygame.font.Font
     tilesets: list[
         tuple[pygame.Surface, int, dict[str, pygame.Rect | list[pygame.Rect]]]
-    ]
-    sounds: dict[str, pygame.mixer.Sound]
+    ] = []
+    sounds: dict[str, pygame.mixer.Sound] = {}
 
     def parse_tile(self, tile, tilesize: int) -> pygame.Rect:
         x = 0

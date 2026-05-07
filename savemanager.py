@@ -11,7 +11,9 @@ class SaveManager:
     latest_save: str
 
     def __init__(self, save_path: Path) -> None:
-        self.save_path = save_path
+        self.save_path = save_path.absolute()
+        if not self.save_path.is_dir():
+            self.save_path.mkdir()
 
     def fetch_saves(self) -> list[str]:
         filenames = next(os.walk(self.save_path), (None, None, []))[2]
@@ -19,8 +21,10 @@ class SaveManager:
             for name in DEFAULT_SAVE_NAMES:
                 with open(self.save_path / Path(name + ".json"), "w") as f:
                     json.dump({}, f)
-
-        return [Path(name).stem for name in filenames]
+            filenames = next(os.walk(self.save_path), (None, None, []))[2]
+        ret = [Path(name).stem for name in filenames]
+        ret.sort()
+        return ret
 
     def save(self, game: Game, save_name: str):
         # TODO: Implement for game.
