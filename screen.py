@@ -90,11 +90,12 @@ class MainScreen(Screen):
 
     def render_map(self):
         surface = self.assets.get_tileset_surface(config.MAIN_TILESET)
-        if surface is None:
+        tilesize = self.assets.get_tile_size(config.MAIN_TILESET)
+        if surface is None or tilesize is None:
             print(f"unknown tileset: MAIN_TILESET: {config.MAIN_TILESET}")
             return
         for x, y, tile in self.game.current_map.enumerate():
-            self.render_tile(x, y, surface, tile)
+            self.render_tile(x * tilesize, y * tilesize, surface, tile)
         pass
 
     def render_enemies(self):
@@ -104,12 +105,15 @@ class MainScreen(Screen):
         pass
 
     def render_player(self):
-        tile = self.assets.get_tile(config.MAIN_TILESET, Tile.floor.value)
+        tile = self.assets.get_tile(config.MAIN_TILESET, "player")
         surface = self.assets.get_tileset_surface(config.MAIN_TILESET)
         if tile is None or surface is None:
-            print("aJJHKFDKJF")
             return
-        self.display.blit(surface, surface.get_rect())  # , (0, 0), tile)
+        self.display.blit(
+            surface,
+            (self.width / 2 - tile.width / 2, self.height / 2 - tile.height / 2),
+            tile,
+        )
 
     def render_ui(self):
         pass

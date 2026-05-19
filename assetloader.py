@@ -16,16 +16,16 @@ class AssetLoader:
     def parse_tile(self, tile, tilesize: int) -> pygame.Rect:
         x = 0
         y = 0
-        w = 0
-        h = 0
+        w = tilesize
+        h = tilesize
         if "x" in tile:
             x = tile["x"] * tilesize
         if "rawx" in tile:
-            x = tile["x"]
+            x = tile["rawx"]
         if "y" in tile:
-            y = tile["x"] * tilesize
+            y = tile["y"] * tilesize
         if "rawy" in tile:
-            y = tile["x"]
+            y = tile["rawy"]
         if "w" in tile:
             w = tile["w"] * tilesize
         if "raww" in tile:
@@ -34,6 +34,7 @@ class AssetLoader:
             h = tile["h"] * tilesize
         if "rawh" in tile:
             h = tile["rawh"]
+        print(tile, x, y)
         return pygame.Rect(x, y, w, h)
 
     def __init__(self, assetDescriptor: Path) -> None:
@@ -88,6 +89,11 @@ class AssetLoader:
             return tile
         else:
             return random.choice(tile)
+
+    def get_tile_size(self, tileset: int) -> int | None:
+        if len(self.tilesets) <= tileset:
+            return None
+        return self.tilesets[tileset][1]
 
     def get_logo(self) -> pygame.Surface:
         return self.logo
