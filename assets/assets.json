@@ -128,11 +128,11 @@
 					"x": 1,
 					"y": 2
 				},
-				"rightsideedge": {
+				"rightedge": {
 					"x": 2,
 					"y": 2
 				},
-				"leftsideedge": {
+				"leftedge": {
 					"x": 3,
 					"y": 2
 				},
@@ -140,27 +140,27 @@
 					"x": 4,
 					"y": 2
 				},
-				"innercornerbottomleft": {
+				"innercornerne": {
 					"x": 5,
 					"y": 3
 				},
-				"innercornerbottomright": {
+				"innercornernw": {
 					"x": 6,
 					"y": 3
 				},
-				"outercornertopleft": {
+				"outercornernw": {
 					"x": 5,
 					"y": 4
 				},
-				"outercornertopright": {
+				"outercornerne": {
 					"x": 6,
 					"y": 4
 				},
-				"outercornerbottomleft": {
+				"outercornersw": {
 					"x": 5,
 					"y": 5
 				},
-				"outercornerbottomright": {
+				"outercornerse": {
 					"x": 6,
 					"y": 5
 				},
