@@ -1,6 +1,6 @@
 from enum import Enum
 from random import Random
-from typing import Generator
+from typing import Generator, Self
 
 from config import (
     AMOUNT_ROOMS,
@@ -9,7 +9,7 @@ from config import (
     HALLWAY_ROOM_MIN_SIZE,
     ROOM_MAX_SIZE,
     ROOM_MIN_SIZE,
-    SIZE,
+    MAP_SIZE,
 )
 
 
@@ -24,6 +24,66 @@ class Tile(Enum):
     def has_ground(self) -> bool:
         return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage)
 
+    # def render(self, neighbours: list[list[Self]]) -> list[tuple[int, int, str]]:
+    #     def empty(x, y):
+    #         return neighbours[x + 1][y + 1] == self.empty
+    #
+    #     def filled(x, y):
+    #         return neighbours[x + 1][y + 1].has_ground()
+    #
+    #     if self == self.empty:
+    #         return []
+    #     t = []
+    #     if self.has_ground():
+    #         t.append((0, 0, self.floor.value))
+    #     t.append((0, 0, self.value))
+    #     match self:
+    #         case self.floor:
+    #             # Shadows
+    #             if empty(1, 0):
+    #                 t.append((0, 0, "shadowpatchright"))
+    #
+    #             if empty(-1, 0):
+    #                 t.append((0, 0, "shadowpatchleft"))
+    #
+    #             if empty(0, 1):
+    #                 t.append((0, 0, "shadowpatchbottom"))
+    #
+    #             if empty(0, -1):
+    #                 t.append((0, 0, "shadowpatchtop"))
+    #
+    #             # Walls
+    #             if empty(0, -1):
+    #                 left = filled(1, 0) and empty(1, -1)
+    #
+    #                 right = filled(-1, 0) and empty(-1, -1)
+    #
+    #                 if left and right:
+    #                     t.append((0, -1, "wall"))
+    #                 elif not left and not right:
+    #                     t.append((0, -1, "wallboth"))
+    #                 elif left:
+    #                     t.append((0, -1, "wallleft"))
+    #                 elif right:
+    #                     t.append((0, -1, "wallright"))
+    #
+    #                 if empty(1, -1) and empty(1, 0):
+    #                     t.append((1, -1, "leftedge"))
+    #                 if empty(-1, -1) and empty(-1, 0):
+    #                     t.append((-1, -1, "rightedge"))
+    #
+    #             # edges
+    #
+    #             if empty(-1, 0):
+    #                 if empty(-1, 1):
+    #                     t.append((-1, 0, "rightedge"))
+    #             if empty(1, 0):
+    #                 if empty(1, 1):
+    #                     t.append((1, 0, "leftedge"))
+    #             if empty(0, 1):
+    #                 t.append((0, 1, "topedge"))
+    #     return t
+
 
 class Map:
     random: Random
@@ -35,7 +95,7 @@ class Map:
     def __init__(self, random: Random, level: int) -> None:
         self.random = random
         self.level = level
-        self.map = [[Tile.empty for _ in range(SIZE)] for _ in range(SIZE)]
+        self.map = [[Tile.empty for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
 
     def generate(self, bandage_count: int):
         rooms = []
@@ -45,8 +105,8 @@ class Map:
             width = self.random.randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
             height = self.random.randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
 
-            x = self.random.randint(0, SIZE - width)
-            y = self.random.randint(0, SIZE - height)
+            x = self.random.randint(0, MAP_SIZE - width)
+            y = self.random.randint(0, MAP_SIZE - height)
 
             # No overlapping (with 1 between)
             while any(
@@ -58,8 +118,8 @@ class Map:
             ):
                 width = self.random.randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
                 height = self.random.randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
-                x = self.random.randint(0, SIZE - width)
-                y = self.random.randint(0, SIZE - height)
+                x = self.random.randint(0, MAP_SIZE - width)
+                y = self.random.randint(0, MAP_SIZE - height)
 
             rooms.append((x, y, width, height))
 
@@ -140,8 +200,8 @@ class Map:
         # Chest
         floor_positions = [
             (i, j)
-            for i in range(SIZE)
-            for j in range(SIZE)
+            for i in range(MAP_SIZE)
+            for j in range(MAP_SIZE)
             if self.map[i][j] == Tile.floor
         ]
 

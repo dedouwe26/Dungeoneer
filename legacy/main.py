@@ -4,6 +4,125 @@ import sys
 import pygame
 from pygame.locals import *
 
+rawtileset = pygame.image.load("assets/tileset.png")
+tileset: pygame.Surface = pygame.transform.scale(
+    rawtileset,
+    (rawtileset.get_size()[0] * WORLD_SIZE, rawtileset.get_size()[1] * WORLD_SIZE),
+)
+del rawtileset
+mirroredTileset: pygame.Surface = pygame.transform.flip(tileset, True, False)
+
+mapTileset = pygame.image.load("assets/maptileset.png")
+
+mapTileRects: dict[str, pygame.Rect] = {
+    "floor": pygame.Rect(MAP_TILE_SIZE, 0, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "player": pygame.Rect(2 * MAP_TILE_SIZE, 0, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "enemy": pygame.Rect(3 * MAP_TILE_SIZE, 0, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "exit": pygame.Rect(4 * MAP_TILE_SIZE, 0, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "chest": pygame.Rect(5 * MAP_TILE_SIZE, 0, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "bandage": pygame.Rect(
+        4 * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE
+    ),
+    "entrance": pygame.Rect(
+        5 * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE
+    ),
+    "bottomedge": pygame.Rect(0, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "rightedge": pygame.Rect(
+        MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE
+    ),
+    "leftedge": pygame.Rect(0, 2 * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE),
+    "topedge": pygame.Rect(
+        MAP_TILE_SIZE, 2 * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE
+    ),
+    "topleftcorner": pygame.Rect(
+        2 * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE
+    ),
+    "toprightcorner": pygame.Rect(
+        3 * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE
+    ),
+    "bottomleftcorner": pygame.Rect(
+        2 * MAP_TILE_SIZE, 2 * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE
+    ),
+    "bottomrightcorner": pygame.Rect(
+        3 * MAP_TILE_SIZE, 2 * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE
+    ),
+}
+
+tileRects: dict[str, pygame.Rect] = {
+    "healthbackground": pygame.Rect(
+        5 * TILE_SIZE, 2 * TILE_SIZE, TILE_SIZE * 3, TILE_SIZE / 2
+    ),
+    "healthforeground": pygame.Rect(
+        5 * TILE_SIZE, 2 * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE * 3, TILE_SIZE / 2
+    ),
+    "fullhealth": pygame.Rect(3 * TILE_SIZE, 0, TILE_SIZE * 3, TILE_SIZE / 2),
+    "health": pygame.Rect(3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE * 3, TILE_SIZE / 2),
+    "shadowpatchbottom": pygame.Rect(0, 0, TILE_SIZE, TILE_SIZE),
+    "shadowpatchtop": pygame.Rect(TILE_SIZE, 0, TILE_SIZE, TILE_SIZE),
+    "shadowpatchright": pygame.Rect(2 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE),
+    "shadowpatchleft": pygame.Rect(0, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "exit": pygame.Rect(TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "entrance": pygame.Rect(2 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "wallleft": pygame.Rect(3 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "wall": pygame.Rect(4 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "wallright": pygame.Rect(5 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "wallboth": pygame.Rect(7 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "goldsword": pygame.Rect(6 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE * 2),
+    "ironsword": pygame.Rect(7 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE * 2),
+    "arrow": pygame.Rect(4 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "crit": pygame.Rect(0, 4 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "closedchest": pygame.Rect(0, 2 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "emptychest": pygame.Rect(0, 3 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "armoredplayer": pygame.Rect(TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "player": pygame.Rect(TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "mirroredarmoredplayer": pygame.Rect(
+        tileset.get_size()[0] - 2 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE, TILE_SIZE
+    ),
+    "mirroredplayer": pygame.Rect(
+        tileset.get_size()[0] - 2 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE, TILE_SIZE
+    ),
+    "redpotion": pygame.Rect(2 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenpotion": pygame.Rect(3 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "yellowpotion": pygame.Rect(4 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "bluepotion": pygame.Rect(4 * TILE_SIZE, 5 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "bandage": pygame.Rect(3 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "floor": pygame.Rect(TILE_SIZE, 2 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "rightsideedge": pygame.Rect(2 * TILE_SIZE, 2 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "leftsideedge": pygame.Rect(3 * TILE_SIZE, 2 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "topedge": pygame.Rect(4 * TILE_SIZE, 2 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "innercornerbottomleft": pygame.Rect(
+        5 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE, TILE_SIZE
+    ),
+    "innercornerbottomright": pygame.Rect(
+        6 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE, TILE_SIZE
+    ),
+    "outercornertopleft": pygame.Rect(
+        5 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE, TILE_SIZE
+    ),
+    "outercornertopright": pygame.Rect(
+        6 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE, TILE_SIZE
+    ),
+    "outercornerbottomleft": pygame.Rect(
+        5 * TILE_SIZE, 5 * TILE_SIZE, TILE_SIZE, TILE_SIZE
+    ),
+    "outercornerbottomright": pygame.Rect(
+        6 * TILE_SIZE, 5 * TILE_SIZE, TILE_SIZE, TILE_SIZE
+    ),
+    "greenenemy0": pygame.Rect(0, 5 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenenemy1": pygame.Rect(TILE_SIZE, 5 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenenemy2": pygame.Rect(2 * TILE_SIZE, 5 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenenemy3": pygame.Rect(0, 6 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenenemy4": pygame.Rect(TILE_SIZE, 6 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "greenenemy5": pygame.Rect(3 * TILE_SIZE, 5 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy0": pygame.Rect(6 * TILE_SIZE, 6 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy1": pygame.Rect(7 * TILE_SIZE, 6 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy2": pygame.Rect(2 * TILE_SIZE, 6 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy3": pygame.Rect(3 * TILE_SIZE, 6 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy4": pygame.Rect(4 * TILE_SIZE, 6 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+    "redenemy5": pygame.Rect(5 * TILE_SIZE, 6 * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+}
+LOGO_IMG = pygame.image.load("assets/logo.png")
+
 # Keybinds:
 # ^ move up .w
 # v move down .s

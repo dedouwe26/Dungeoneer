@@ -1,5 +1,4 @@
 from abc import ABC
-import math
 from typing import Final
 
 from pygame import Color, Rect, Surface
@@ -9,11 +8,12 @@ from application import Application
 from assetloader import AssetLoader
 import config
 from game import Game
-from map import Tile
+from map import Map, Tile
 from savemanager import SaveManager
 
 
 class Screen(ABC):
+    mainset: Surface
     assets: AssetLoader
     saves: SaveManager
     game: Game
@@ -29,6 +29,10 @@ class Screen(ABC):
         self.display = app.display
         self.width, self.height = self.display.get_size()
         self.assets = app.asset_loader
+        mainset = self.assets.get_tileset_surface(config.MAIN_TILESET)
+        if mainset is None:
+            raise Exception("no main tileset")
+        self.mainset = mainset
         self.saves = app.save_manager
         self.game = app.game
         app.on_tick = self.tick
@@ -36,6 +40,9 @@ class Screen(ABC):
         app.on_keydown = self.keydown
         app.on_keyup = self.keyup
         app.on_game_event = self.on_event
+
+    def map(self) -> Map:
+        return self.game.current_map
 
     def on_event(self, event_name: str):
         self.app.play_sound(event_name)
@@ -69,50 +76,156 @@ def switch_screen(new_screen: Screen):
 
 
 class MainScreen(Screen):
+    def __init__(self, app: Application) -> None:
+        super().__init__(app)
+
     def calculate_screen(self, x: float, y: float) -> tuple[float, float]:
         px = self.game.player.x
         py = self.game.player.y
-        return (x - (px - self.width / 2), y - (py - self.height / 2))
 
-    def render_in_world(self, x: int, y: int, surface: Surface, rect: Rect):
+        return (  # TODO: Conversion from game coords to screen coords.
+            (x - px) * config.WORLD_SIZE + self.width / 2,
+            (y - py) * config.WORLD_SIZE + self.height / 2,
+        )
+
+    def render_in_world(self, x: float, y: float, surface: Surface, rect: Rect):
         screen = self.calculate_screen(x, y)
         self.display.blit(surface, screen, rect)
 
-    def render_tile(self, x: int, y: int, surface: Surface, tile: Tile):
-        rect = self.assets.get_tile(config.MAIN_TILESET, tile.value)
-        if rect is None:
-            if tile != Tile.empty:
-                print(f"unknown tile: {tile.value}")
-            return
-        if tile.has_ground() and tile != Tile.floor:
-            self.render_tile(x, y, surface, Tile.floor)
-        self.render_in_world(x, y, surface, rect)
+    def render_tile(self, x: int, y: int, tile: Tile):
+        def empty(x2, y2):
+            return self.map().get_tile(x + x2, y + y2) == Tile.empty
+
+        def edge(x1, y1):
+            left = not empty(x1 - 1, y1)
+            right = not empty(x1 + 1, y1)
+            top = not empty(x1, y1 - 1)
+            bottom = not empty(x1, y1 + 1)
+            if left:
+                r2(x1, y1 - 1, "leftedge")
+            if right:
+                r2(x1, y1 - 1, "rightedge")
+            if top:
+                r2(x1, y1 - 1, "topedge")
+            if bottom:
+                lw = left or empty(x1 - 1, y1 + 1)
+                rw = right or empty(x1 + 1, y1 + 1)
+                if lw and rw:
+                    r2(x1, y1, "wallboth")
+                elif lw:
+                    r2(x1, y1, "wallleft")
+                elif rw:
+                    r2(x1, y1, "wallright")
+                else:
+                    r2(x1, y1, "wall")
+            if left and top:
+                r2(x1, y1 - 1, "innercornernw")
+            if right and top:
+                r2(x1, y1 - 1, "innercornerne")
+            if not empty(x1 - 1, y1 - 1) and empty(x1 - 1, y1) and empty(x1, y1 - 1):
+                r2(x1, y1 - 1, "outercornerse")
+            if not empty(x1 + 1, y1 - 1) and empty(x1 + 1, y1) and empty(x1, y1 - 1):
+                r2(x1, y1 - 1, "outercornersw")
+            if not empty(x1 - 1, y1 + 1) and empty(x1 - 1, y1) and empty(x1, y1 + 1):
+                r2(x1, y1, "outercornerne")
+            if not empty(x1 + 1, y1 + 1) and empty(x1 + 1, y1) and empty(x1, y1 + 1):
+                r2(x1, y1, "outercornernw")
+
+        def r(x2, y2, s):
+            t = self.assets.get_tile(config.MAIN_TILESET, s)
+            if t is None:
+                return
+            self.render_in_world(x + x2, y + y2, self.mainset, t)
+
+        def r2(x2, y2, s):  # TODO: Render opacity when player walks behind
+            r(x2, y2, s)
+
+        n = empty(0, -1)
+        e = empty(1, 0)
+        s = empty(0, 1)
+        w = empty(-1, 0)
+        ne = empty(1, -1)
+        se = empty(1, 1)
+        sw = empty(-1, 1)
+        nw = empty(-1, -1)
+
+        if tile != Tile.empty:
+            if tile.has_ground() and not s:
+                r(0, 0, "floor")
+                if w:
+                    r(0, 0, "shadowpatchleft")
+                if e:
+                    r(0, 0, "shadowpatchright")
+                if s:
+                    r(0, 0, "shadowpatchbottom")
+                if n:
+                    r(0, 0, "shadowpatchtop")
+
+            if tile != Tile.floor and not s:
+                r(0, 0, tile.value)
+
+            if n:
+                edge(0, -1)
+            if e:
+                edge(1, 0)
+            if s:
+                edge(0, 1)
+            if w:
+                edge(-1, 0)
+            if ne:
+                edge(1, -1)
+            if se:
+                edge(1, 1)
+            if sw:
+                edge(-1, 1)
+            if nw:
+                edge(-1, -1)
 
     def render_map(self):
-        surface = self.assets.get_tileset_surface(config.MAIN_TILESET)
-        tilesize = self.assets.get_tile_size(config.MAIN_TILESET)
-        if surface is None or tilesize is None:
-            print(f"unknown tileset: MAIN_TILESET: {config.MAIN_TILESET}")
+        for x, y, tile in self.map().enumerate():
+            self.render_tile(x, y, tile)
+
+    def render_character(
+        self,
+        x: float,
+        y: float,
+        tileset: int,
+        tile: str,
+        variant: int = 0,
+        flip: bool = False,
+    ):
+        surface = self.assets.get_tileset_surface(tileset, flip)
+        rect = self.assets.get_tile(tileset, tile, variant, flip)
+        if surface is None or rect is None:
+            print("unable to render character: could not find assets")
             return
-        for x, y, tile in self.game.current_map.enumerate():
-            self.render_tile(x * tilesize, y * tilesize, surface, tile)
-        pass
+        self.render_in_world(
+            x - rect.width / config.WORLD_SIZE / 2,
+            y - rect.height / config.WORLD_SIZE,
+            surface,
+            rect,
+        )
 
     def render_enemies(self):
-        pass
+        for enemy in self.game.enemies:
+            self.render_character(
+                enemy.x,
+                enemy.y,
+                config.MAIN_TILESET,
+                "redenemy" if enemy.is_melee else "greenenemy",
+                enemy.variant,
+            )
 
     def render_projectiles(self):
         pass
 
     def render_player(self):
-        tile = self.assets.get_tile(config.MAIN_TILESET, "player")
-        surface = self.assets.get_tileset_surface(config.MAIN_TILESET)
-        if tile is None or surface is None:
-            return
-        self.display.blit(
-            surface,
-            (self.width / 2 - tile.width / 2, self.height / 2 - tile.height / 2),
-            tile,
+        self.render_character(
+            self.game.player.x,
+            self.game.player.y,
+            config.MAIN_TILESET,
+            "player",
+            flip=self.game.player.facing,
         )
 
     def render_ui(self):

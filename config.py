@@ -11,6 +11,8 @@ WINDOW_HEIGHT: Final[int] = 400
 
 BACKGROUND: Final[Color] = Color(28, 17, 23)
 
+WORLD_SIZE: Final[int] = 32
+
 SHOOT_COOLDOWN: Final[int] = TPS * 1
 MELEE_COOLDOWN: Final[int] = TPS * 1
 SHOOTING_RANGE: Final[float] = 8
@@ -44,7 +46,7 @@ DEFAULT_SAVE_NAMES: Final[list[str]] = ["Save 1", "Save 2", "Save 3"]
 MAIN_TILESET: Final[int] = 0
 MAP_TILESET: Final[int] = 1
 
-SIZE: Final[int] = 80
+MAP_SIZE: Final[int] = 80
 AMOUNT_ROOMS: Final[int] = 15
 ROOM_MIN_SIZE: Final[int] = 8
 ROOM_MAX_SIZE: Final[int] = 15

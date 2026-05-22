@@ -9,6 +9,8 @@ from player import Player
 class Enemy:
     x: float
     y: float
+    variant: int
+    is_melee: bool
     strength: float
     attack_cooldown: int = 0
     attack_speed: int
@@ -42,6 +44,8 @@ class Enemy:
         )
         self.collide = collide
         self.on_event = on_event
+        self.variant = random.randint(0, 10)
+        self.is_melee = bool(random.getrandbits(1))
 
     def damage(self, damage: float):
         if damage > 0:
