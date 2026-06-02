@@ -10,8 +10,12 @@ WINDOW_WIDTH: Final[int] = 600
 WINDOW_HEIGHT: Final[int] = 400
 
 BACKGROUND: Final[Color] = Color(28, 17, 23)
-
+MAP_BACKGROUND: Final[Color] = Color(219, 207, 151)
+RED: Final[Color] = Color(182, 47, 49)
+YELLOW: Final[Color] = Color(204, 170, 68)
 WORLD_SIZE: Final[int] = 32
+TILES_WIDTH: Final[int] = WINDOW_WIDTH / WORLD_SIZE
+TILES_HEIGHT: Final[int] = WINDOW_HEIGHT / WORLD_SIZE
 
 SHOOT_COOLDOWN: Final[int] = TPS * 1
 MELEE_COOLDOWN: Final[int] = TPS * 1
@@ -33,7 +37,7 @@ K_MOVE_UP: Final[int] = pygame.K_w
 K_MOVE_LEFT: Final[int] = pygame.K_a
 K_MOVE_DOWN: Final[int] = pygame.K_s
 K_MOVE_RIGHT: Final[int] = pygame.K_d
-K_OPEN_MAP: Final[int] = pygame.K_r
+K_OPEN_MAP: Final[int] = pygame.K_m
 K_CLOSE: Final[int] = pygame.K_ESCAPE
 K_OPEN_MENU: Final[int] = K_CLOSE
 K_INTERACT: Final[int] = pygame.K_f

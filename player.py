@@ -2,6 +2,8 @@ import math
 from random import Random
 from typing import Callable, Generator
 
+from pygame import Vector2
+
 import config
 
 
@@ -10,17 +12,17 @@ class Player:
     y: float
     max_health: float = 10
     health: float = max_health
-    speed: float = 8
+    speed: float = 3
     crit_chance: float = 0.05
     strength: float = 1
     bow_cooldown: int = 0  # in ticks
     sword_cooldown: int = 0  # in ticks
     facing: bool = False  # False for east
     on_event: Callable[[str], None]
-    collide: Callable[[float, float], bool]
+    collide: Callable[[float, float], Vector2]
 
     def __init__(
-        self, on_event: Callable[[str], None], collide: Callable[[float, float], bool]
+        self, on_event: Callable[[str], None], collide: Callable[[float, float], Vector2]
     ) -> None:
         self.on_event = on_event
         self.collide = collide
@@ -70,9 +72,18 @@ class Player:
         if damage > 0:
             self.on_event(config.PLAYER_DAMAGE_EVENT)
         self.health -= damage
+        if self.health <= 0:
+            self.on_event(config.PLAYER_KILL_EVENT)
 
     def move(self, dx: float, dy: float):
-        if self.collide(self.x + dx, self.y + dy):
-            return
-        self.x += dx * self.speed
-        self.y += dy * self.speed
+        dx *= self.speed
+        dy *= self.speed
+        col = self.collide(self.x + dx, self.y + dy)
+        dx *= col.x
+        dy *= col.y
+        if dx > 0:
+            self.facing = False
+        if dx < 0:
+            self.facing = True
+        self.x += dx
+        self.y += dy

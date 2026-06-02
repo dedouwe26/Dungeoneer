@@ -278,19 +278,19 @@
 					"x": 5,
 					"y": 1
 				},
-				"bottomedge": {
+				"topedge": {
 					"x": 0,
-					"y": 1
-				},
-				"rightedge": {
-					"x": 1,
 					"y": 1
 				},
 				"leftedge": {
+					"x": 1,
+					"y": 1
+				},
+				"rightedge": {
 					"x": 0,
 					"y": 2
 				},
-				"topedge": {
+				"bottomedge": {
 					"x": 1,
 					"y": 2
 				},

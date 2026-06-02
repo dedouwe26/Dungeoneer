@@ -1,6 +1,6 @@
 from enum import Enum
 from random import Random
-from typing import Generator, Self
+from typing import Generator
 
 from config import (
     AMOUNT_ROOMS,
@@ -20,6 +20,9 @@ class Tile(Enum):
     entrance = "entrance"
     exit = "exit"
     bandage = "bandage"
+
+    def has_collision(self):
+        return self in (self.empty, self.chest)
 
     def has_ground(self) -> bool:
         return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage)

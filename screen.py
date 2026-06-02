@@ -1,7 +1,8 @@
 from abc import ABC
-from typing import Final
+import math
+from typing import Callable, Final
 
-from pygame import Color, Rect, Surface
+from pygame import Color, Rect, Surface, Vector2
 import pygame
 
 from application import Application
@@ -51,13 +52,11 @@ class Screen(ABC):
         pass
 
     def render(self, deltatime: float):
-        pass
-
-    def tick(self, deltatime: float):
         dir = self.app.handle_movement()
         if dir != (0, 0):
-            self.move(dir[0], dir[1])
+            self.move(dir[0]*deltatime, dir[1]*deltatime)
 
+    def tick(self, deltatime: float):
         self.game.tick(deltatime)
 
     def keydown(self, key: int):
@@ -76,6 +75,9 @@ def switch_screen(new_screen: Screen):
 
 
 class MainScreen(Screen):
+    should_block_input: bool = False
+    effects: list[list[int, Callable[[int], None]]] = []
+
     def __init__(self, app: Application) -> None:
         super().__init__(app)
 
@@ -83,107 +85,134 @@ class MainScreen(Screen):
         px = self.game.player.x
         py = self.game.player.y
 
-        return (  # TODO: Conversion from game coords to screen coords.
+        return (
             (x - px) * config.WORLD_SIZE + self.width / 2,
             (y - py) * config.WORLD_SIZE + self.height / 2,
         )
 
-    def render_in_world(self, x: float, y: float, surface: Surface, rect: Rect):
+    def render_in_world(self, x: float, y: float, source: Surface, rect: Rect, opacity: float = 1):
         screen = self.calculate_screen(x, y)
-        self.display.blit(surface, screen, rect)
+        x = screen[0]
+        y = screen[1]
+        temp = pygame.Surface((rect.w, rect.h)).convert()
+        temp.blit(self.display, (0, 0), Rect(x, y, rect.w, rect.h))
+        temp.blit(source, (0, 0), rect)
+        temp.set_alpha(opacity*255)
+        self.display.blit(temp, screen)
 
     def render_tile(self, x: int, y: int, tile: Tile):
         def empty(x2, y2):
             return self.map().get_tile(x + x2, y + y2) == Tile.empty
 
-        def edge(x1, y1):
-            left = not empty(x1 - 1, y1)
-            right = not empty(x1 + 1, y1)
-            top = not empty(x1, y1 - 1)
-            bottom = not empty(x1, y1 + 1)
-            if left:
-                r2(x1, y1 - 1, "leftedge")
-            if right:
-                r2(x1, y1 - 1, "rightedge")
-            if top:
-                r2(x1, y1 - 1, "topedge")
-            if bottom:
-                lw = left or empty(x1 - 1, y1 + 1)
-                rw = right or empty(x1 + 1, y1 + 1)
-                if lw and rw:
-                    r2(x1, y1, "wallboth")
-                elif lw:
-                    r2(x1, y1, "wallleft")
-                elif rw:
-                    r2(x1, y1, "wallright")
-                else:
-                    r2(x1, y1, "wall")
-            if left and top:
-                r2(x1, y1 - 1, "innercornernw")
-            if right and top:
-                r2(x1, y1 - 1, "innercornerne")
-            if not empty(x1 - 1, y1 - 1) and empty(x1 - 1, y1) and empty(x1, y1 - 1):
-                r2(x1, y1 - 1, "outercornerse")
-            if not empty(x1 + 1, y1 - 1) and empty(x1 + 1, y1) and empty(x1, y1 - 1):
-                r2(x1, y1 - 1, "outercornersw")
-            if not empty(x1 - 1, y1 + 1) and empty(x1 - 1, y1) and empty(x1, y1 + 1):
-                r2(x1, y1, "outercornerne")
-            if not empty(x1 + 1, y1 + 1) and empty(x1 + 1, y1) and empty(x1, y1 + 1):
-                r2(x1, y1, "outercornernw")
-
+        def r2(x2, y2, s):
+            t = self.assets.get_tile(config.MAIN_TILESET, s)
+            if t is None:
+                return
+            self.render_in_world(x + x2, y + y2, self.mainset, t, self.calculate_loweropacity(x + x2, y + y2))
+            
         def r(x2, y2, s):
             t = self.assets.get_tile(config.MAIN_TILESET, s)
             if t is None:
                 return
-            self.render_in_world(x + x2, y + y2, self.mainset, t)
-
-        def r2(x2, y2, s):  # TODO: Render opacity when player walks behind
-            r(x2, y2, s)
+            self.render_in_world(x + x2, y + y2, self.mainset, t, self.calculate_upperopacity(x + x2, y + y2))
 
         n = empty(0, -1)
         e = empty(1, 0)
         s = empty(0, 1)
         w = empty(-1, 0)
-        ne = empty(1, -1)
-        se = empty(1, 1)
-        sw = empty(-1, 1)
-        nw = empty(-1, -1)
 
         if tile != Tile.empty:
-            if tile.has_ground() and not s:
-                r(0, 0, "floor")
+            if tile.has_ground():
+                r2(0, 0, "floor")
                 if w:
-                    r(0, 0, "shadowpatchleft")
+                    r2(0, 0, "shadowpatchleft")
                 if e:
-                    r(0, 0, "shadowpatchright")
+                    r2(0, 0, "shadowpatchright")
                 if s:
-                    r(0, 0, "shadowpatchbottom")
+                    r2(0, 0, "shadowpatchbottom")
                 if n:
-                    r(0, 0, "shadowpatchtop")
+                    r2(0, 0, "shadowpatchtop")
+            if tile != Tile.floor:
+                r2(0, 0, tile.value)
+            return
+        n = not n
+        e = not e
+        s = not s
+        w = not w
+        if w:
+            r(0, -1, "leftedge")
+        if e:
+            r(0, 0 - 1, "rightedge")
+        if n:
+            r(0, 0 - 1, "topedge")
+        if s:
+            lw = w or empty(-1, 1)
+            rw = e or empty(1, 1)
+            if lw and rw:
+                r(0, 0, "wallboth")
+            elif lw:
+                r(0, 0, "wallleft")
+            elif rw:
+                r(0, 0, "wallright")
+            else:
+                r(0, 0, "wall")
+        if w and n:
+            r(0, 0 - 1, "innercornernw")
+        if e and n:
+            r(0, 0 - 1, "innercornerne")
+        if not empty(-1, -1) and not w and not n:
+            r(0, 0 - 1, "outercornerse")
+        if not empty(1, -1) and not e and not n:
+            r(0, -1, "outercornersw")
+        if not empty(-1, 1) and not w and not s:
+            r(0, 0, "outercornerne")
+        if not empty(1, 1) and not e and not s:
+            r(0, 0, "outercornernw")
 
-            if tile != Tile.floor and not s:
-                r(0, 0, tile.value)
+    def calculate_upperopacity(self, x: int, y: int) -> float:
+        if self.map().get_tile(x, y+1) != Tile.empty or self.map().get_tile(x, y) == Tile.empty:
+            return 1
+        a = [Vector2(x - self.game.player.x, y - self.game.player.y + 1)]
+        a.extend(
+            [Vector2(x - e.x, y - e.y + 1) for e in self.game.enemies]
+        )
+        p = None
+        dm = 10000
+        for ap in a:
+            d = ap.distance_squared_to((0, 0))
+            if d < dm:
+                dm = d
+                p = ap
+        if p.y < 0:
+            return 1
+        d = (abs(p.x+0.5) + p.y) / 2
+        return min(d*0.5, 1)
 
-            if n:
-                edge(0, -1)
-            if e:
-                edge(1, 0)
-            if s:
-                edge(0, 1)
-            if w:
-                edge(-1, 0)
-            if ne:
-                edge(1, -1)
-            if se:
-                edge(1, 1)
-            if sw:
-                edge(-1, 1)
-            if nw:
-                edge(-1, -1)
+    def calculate_loweropacity(self, x: int, y: int) -> float:
+        if self.map().get_tile(x, y+1) != Tile.empty or self.map().get_tile(x, y) == Tile.empty:
+            return 1
+        a = [Vector2(x - self.game.player.x, y - self.game.player.y + 1)]
+        a.extend(
+            [Vector2(x - e.x, y - e.y + 1) for e in self.game.enemies]
+        )
+        p = None
+        dm = 10000
+        for ap in a:
+            d = ap.distance_squared_to((0, 0))
+            if d < dm:
+                dm = d
+                p = ap
+        if p.y < 0:
+            return 0
+        d = (abs(p.x+0.5) + p.y) / 2
+        return 1 - self.calculate_upperopacity(x, y)
 
     def render_map(self):
-        for x, y, tile in self.map().enumerate():
-            self.render_tile(x, y, tile)
+        half_width = math.ceil(config.TILES_WIDTH / 2)
+        half_height = math.ceil(config.TILES_HEIGHT / 2)
+        for x in range(math.floor(self.game.player.x - half_width), math.ceil(self.game.player.x + half_width)):
+            for y in range(math.floor(self.game.player.y - half_height), math.ceil(self.game.player.y + half_height)):
+                self.render_tile(x, y, self.map().get_tile(x, y))
 
     def render_character(
         self,
@@ -214,6 +243,7 @@ class MainScreen(Screen):
                 config.MAIN_TILESET,
                 "redenemy" if enemy.is_melee else "greenenemy",
                 enemy.variant,
+                enemy.facing
             )
 
     def render_projectiles(self):
@@ -229,23 +259,172 @@ class MainScreen(Screen):
         )
 
     def render_ui(self):
+        
         pass
 
     def render(self, deltatime: float):
+        super().render(deltatime)
         self.display.fill(config.BACKGROUND)
         self.render_map()
         self.render_enemies()
-        self.render_projectiles()
         self.render_player()
-        # TODO: Render effects
+        self.render_projectiles()
+        deleted = []
+        for i in range(len(self.effects)):
+            effect = self.effects[i]
+            effect[1](effect[0])
+            self.effects[i][0] -= 1
+            if self.effects[i][0] == 0:
+                deleted.append(i)
+        for i in deleted:
+            del self.effects[i]
         self.render_ui()
+    
+    def on_event(self, event_name: str):
+        def player_kill(i: int):
+            sec_passed = (-i-1) / config.FPS
+            alpha = min(255, round(255 * (sec_passed)))
+            gameover = Surface((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
+            gameover.fill(config.BACKGROUND)
+            gameover.set_alpha(alpha)
+            self.display.blit(gameover, (0, 0), gameover.get_rect())
+            
+            text = self.assets.get_font().render("Game Over", False, config.RED)
+            rect = text.get_rect()
+            rect.centerx = self.width / 2
+            rect.bottom = self.height / 2
+            self.display.blit(text, rect)
+
+            text = self.assets.get_font().render(
+                "You've reached level " + str(self.game.level), False, config.YELLOW
+            )
+            text.set_alpha(alpha / 100 * 255)
+            rect = text.get_rect()
+            rect.centerx = self.width / 2
+            rect.top = self.height / 2
+            self.display.blit(text, rect)
+        def fade(i: int):
+            interval = 1 - (i / (config.FPS*1))
+            if interval >= 0.5:
+                interval = 1 - interval
+            alpha = min(255, round(255 * interval * 2))
+            surf = Surface((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
+            surf.fill(config.BACKGROUND)
+            surf.set_alpha(alpha)
+            self.display.blit(surf, (0, 0), surf.get_rect())
+            if i == (config.FPS*1 - 1):
+                self.should_block_input = False
+
+        super().on_event(event_name)
+        match event_name:
+            case config.PLAYER_KILL_EVENT:
+                self.should_block_input = True
+                self.game.game_over = True
+                self.effects.append([-1, player_kill])
+            case config.LEVEL_UP_EVENT:
+                self.should_block_input = True
+                self.effects.append([config.FPS*1, fade])
+
+
+    def move(self, dx: float, dy: float):
+        if self.should_block_input: return
+        self.game.player.move(dx, dy)
+
+    def keydown(self, key: int):
+        match key:
+            case config.K_OPEN_MENU:
+                switch_screen(MenuScreen(self.app))
+            case config.K_OPEN_MAP:
+                if self.should_block_input: return
+                switch_screen(MapScreen(self))
+            case config.K_INTERACT:
+                if self.should_block_input: return
+                # TODO: Interact, attack, fire
 
 
 class MapScreen(Screen):
-    pass
+    x: float
+    y: float
+    maptileset: Surface
+    parent: MainScreen
+    def __init__(self, mainscreen: MainScreen) -> None:
+        super().__init__(mainscreen.app)
+        self.parent = mainscreen
+        self.x = self.game.player.x / 2
+        self.y = self.game.player.y / 2
+        t = self.assets.get_tileset_surface(config.MAP_TILESET)
+        if t is None:
+            raise Exception("no map tileset")
+        self.maptileset = t
+    def calculate_screen(self, x: float, y: float):
+        return (
+            (x - self.x) * config.WORLD_SIZE + self.width / 2,
+            (y - self.y) * config.WORLD_SIZE + self.height / 2,
+        )
+    def render(self, deltatime: float):
+        super().render(deltatime)
+        self.display.fill(config.MAP_BACKGROUND)
+        width = math.ceil(config.TILES_WIDTH)
+        height = math.ceil(config.TILES_HEIGHT)
+        for x in range(math.floor(self.game.player.x - width), math.ceil(self.game.player.x + width)):
+            for y in range(math.floor(self.game.player.y - height), math.ceil(self.game.player.y + height)):
+                self.render_tile(x, y, self.map().get_tile(x, y))
+    def render_tile(self, x: int, y: int, tile: Tile):
+        def empty(x2, y2):
+            return self.map().get_tile(x + x2, y + y2) == Tile.empty
+        def r(s):
+            t = self.assets.get_tile(config.MAP_TILESET, s)
+            if t is None:
+                return
+            screen = self.calculate_screen(x/2, y/2)
+            self.display.blit(self.maptileset, screen, t)
+
+        if tile != Tile.empty:
+            if tile.has_ground():
+                r("floor")
+            if tile != Tile.floor:
+                r(tile.value)
+        else:
+            n = not empty(0, -1)
+            e = not empty(1, 0)
+            s = not empty(0, 1)
+            w = not empty(-1, 0)
+            if n:
+                r("topedge")
+            if s:
+                r("bottomedge")
+            if e:
+                r("rightedge")
+            if w:
+                r("leftedge")
+            
+            if not empty(-1, -1) and not w and not n:
+                r(0, 0 - 1, "outercornerse")
+            if not empty(1, -1) and not e and not n: # FIXME: here error
+                r(0, -1, "outercornersw")
+            if not empty(-1, 1) and not w and not s:
+                r(0, 0, "outercornerne")
+            if not empty(1, 1) and not e and not s:
+                r(0, 0, "outercornernw")
+
+    def on_event(self, event_name: str):
+        switch_screen(self.parent)
+        self.parent.on_event(event_name)
+
+    def tick(self, deltatime: float):
+        return self.parent.tick(deltatime)
+
+    def keydown(self, key: int):
+        match key:
+            case config.K_CLOSE:
+                switch_screen(self.parent)
+
+    def move(self, dx: float, dy: float):
+        self.x += dx * 2
+        self.y += dy * 2
 
 
-class MenuScreen(Screen):
+class MenuScreen(Screen): 
     FOREGROUND: Final[Color] = Color(219, 207, 151)
     MENU: Final[int] = 0
     LOAD_GAME: Final[int] = 1

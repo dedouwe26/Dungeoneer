@@ -3,7 +3,10 @@
 
 import math
 from random import Random
+from re import S
 from typing import Any, Callable
+
+from pygame import Rect, Vector2
 
 import config
 from enemy import Enemy
@@ -41,6 +44,7 @@ class Projectile:
 # used by the rendering of the screens.
 class Game:
     level: int
+    game_over: bool = False
     current_random_state: tuple[Any, ...]
     random: Random
     current_map: Map
@@ -106,9 +110,29 @@ class Game:
         self.player.teleport(self.current_map.start[0], self.current_map.start[1])
         self.on_event(config.LEVEL_UP_EVENT)
 
-    def collide(self, x: float, y: float) -> bool:
-        # TODO: impl
-        return False
+    def collide(self, x: float, y: float, width: float = 0.68)-> Vector2:
+        cx = math.floor(x)
+        cy = math.floor(y)
+        l = x - width / 2
+        r = l + width
+        height = 0.1
+        t = y - height
+        b = t + height
+        for x1 in range(cx-1, cx+2):
+            for y1 in range(cy-1, cy+2):
+                if not self.current_map.get_tile(x1, y1).has_collision():
+                    continue
+                n = y1 <= t < y1+1
+                e = x1 <= r < x1+1
+                s = y1 <= b < y1+1
+                w = x1 <= l < x1+1
+                nw = n and w
+                ne = n and e
+                sw = s and w
+                se = s and e
+                if nw or ne or sw or se:
+                    return Vector2(0, 0)
+        return Vector2(1, 1)
 
     def interact(self):
         for x, y in self.player.iterate_neighbouring_tiles():
@@ -157,6 +181,7 @@ class Game:
         pass
 
     def tick(self, deltatime: float):
+        if self.game_over: return
         if self.shoot_cooldown > 0:
             self.shoot_cooldown -= 1
         if self.melee_cooldown > 0:

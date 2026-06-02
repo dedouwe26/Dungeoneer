@@ -40,9 +40,9 @@ class Application:
 
         # Load window surface.
         self.real_display = pygame.display.set_mode(
-            (config.WINDOW_WIDTH, config.WINDOW_HEIGHT), vsync=1
+            (config.WINDOW_WIDTH, config.WINDOW_HEIGHT), vsync=1, flags=pygame.RESIZABLE
         )
-        self.display = pygame.Surface((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
+        self.display = pygame.Surface((config.WINDOW_WIDTH, config.WINDOW_HEIGHT), flags=pygame.SRCALPHA)
         self.update_scale(self.real_display.get_width(), self.real_display.get_height())
 
         # Set window properties.
@@ -71,12 +71,12 @@ class Application:
 
             self.last_tick += dt
             if self.last_tick >= one_over_tps:
-                self.on_tick(self.last_tick)
+                self.on_tick(self.last_tick / 1000)
                 self.last_tick = 0
 
             self.last_frame += dt
             if self.last_frame >= one_over_fps:
-                self.on_render(self.last_frame)
+                self.on_render(self.last_frame / 1000)
                 dis = pygame.transform.scale(
                     self.display,
                     (
@@ -115,7 +115,7 @@ class Application:
 
     def is_key_pressed(self, key: int) -> bool:
         keystate = pygame.key.get_pressed()
-        return key in keystate
+        return keystate[key]
 
     def handle_movement(self) -> tuple[float, float]:
         dx = 0
