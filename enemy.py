@@ -42,7 +42,8 @@ class Enemy:
         self.facing = bool(random.getrandbits(1))
         self.attack_range = 1  # TODO: You know the drill...
         self.attack_speed = (
-            0.5*config.TPS  # TODO: I don't need to type it anymore. Oh and lower is faster...
+            config.TPS
+            // 2  # TODO: I don't need to type it anymore. Oh and lower is faster...
         )
         self.collide = collide
         self.on_event = on_event

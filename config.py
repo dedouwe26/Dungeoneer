@@ -14,14 +14,17 @@ MAP_BACKGROUND: Final[Color] = Color(219, 207, 151)
 RED: Final[Color] = Color(182, 47, 49)
 YELLOW: Final[Color] = Color(204, 170, 68)
 WORLD_SIZE: Final[int] = 32
-TILES_WIDTH: Final[int] = WINDOW_WIDTH / WORLD_SIZE
-TILES_HEIGHT: Final[int] = WINDOW_HEIGHT / WORLD_SIZE
+MAP_WORLD_SIZE: Final[int] = WORLD_SIZE // 2
+TILES_WIDTH: Final[float] = WINDOW_WIDTH / WORLD_SIZE
+TILES_HEIGHT: Final[float] = WINDOW_HEIGHT / WORLD_SIZE
+MAP_TILES_WIDTH: Final[float] = WINDOW_WIDTH / MAP_WORLD_SIZE
+MAP_TILES_HEIGHT: Final[float] = WINDOW_HEIGHT / MAP_WORLD_SIZE
 
 SHOOT_COOLDOWN: Final[int] = TPS * 1
 MELEE_COOLDOWN: Final[int] = TPS * 1
 SHOOTING_RANGE: Final[float] = 8
 MELEE_RANGE: Final[float] = 8
-ARROW_SPEED: Final[float] = 1
+ARROW_SPEED: Final[float] = 0.05
 BANDAGE_HEAL_AMOUNT: Final[float] = 3
 
 ENEMY_DAMAGE_EVENT: Final[str] = "enemyhit"
@@ -42,8 +45,8 @@ K_CLOSE: Final[int] = pygame.K_ESCAPE
 K_OPEN_MENU: Final[int] = K_CLOSE
 K_INTERACT: Final[int] = pygame.K_f
 K_SELECT: Final[int] = pygame.K_RETURN
-M_ATTACK: Final[int] = 0
-M_FIRE: Final[int] = 1
+K_ATTACK: Final[int] = pygame.K_h
+K_FIRE: Final[int] = pygame.K_j
 
 DEFAULT_SAVE_NAMES: Final[list[str]] = ["Save 1", "Save 2", "Save 3"]
 

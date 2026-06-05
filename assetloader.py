@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-import random
 
 import pygame
 
@@ -57,7 +56,7 @@ class AssetLoader:
         for tileset in self.descriptor["tilesets"]:
             tiles = {}
             tilesize = tileset["tilesize"]
-            scale = config.WORLD_SIZE / tilesize
+            scale = eval(tileset["virtualsize"])
             for tile in tileset["tiles"]:
                 if "variants" in tileset["tiles"][tile]:
                     variants = []

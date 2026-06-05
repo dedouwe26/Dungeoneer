@@ -3,6 +3,7 @@
 		{
 			"source": "./tileset.png",
 			"tilesize": 16,
+			"virtualsize": "config.WORLD_SIZE / tilesize",
 			"tiles": {
 				"healthbackground": {
 					"x": 5,
@@ -249,6 +250,7 @@
 		{
 			"source": "./maptileset.png",
 			"tilesize": 8,
+			"virtualsize": "config.MAP_WORLD_SIZE / tilesize",
 			"tiles": {
 				"floor": {
 					"x": 1,

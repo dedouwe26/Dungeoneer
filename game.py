@@ -4,6 +4,7 @@
 import math
 from random import Random
 from re import S
+from sre_compile import dis
 from typing import Any, Callable
 
 from pygame import Rect, Vector2
@@ -28,15 +29,19 @@ class Projectile:
     def tick(self, deltatime: float) -> bool:
         dx = self.enemy.x - self.x
         dy = self.enemy.y - self.y
-        if dx <= config.ARROW_SPEED * deltatime or dy <= config.ARROW_SPEED * deltatime:
+        print("projectile tick", config.ARROW_SPEED, dx, dy, deltatime)
+        if dx <= config.ARROW_SPEED and dy <= config.ARROW_SPEED:
+            print("distance closed")
             return True
-        self.angle = math.tanh(dy / dx)
+        print("projectile tick2")
+        self.angle = math.degrees(math.atan2(-dy, dx))
         # Normalize
         d = math.hypot(dx, dy)
         dx /= d
         dy /= d
         self.x += deltatime * config.ARROW_SPEED * dx
         self.y += deltatime * config.ARROW_SPEED * dy
+        print("wating for next", self.angle)
         return False
 
 
@@ -68,6 +73,7 @@ class Game:
         self.current_random_state = self.random.getstate()
         self.generate()
         self.is_initialized = True
+        self.game_over = False
 
     def calculate_bandage_count(self):
         return self.player.calculate_bandage_count()
@@ -99,6 +105,7 @@ class Game:
                 self.current_map.end[0], self.current_map.end[1]
             )
             < 1
+            and not self.game_over
         )
 
     def level_up(self):
@@ -110,7 +117,7 @@ class Game:
         self.player.teleport(self.current_map.start[0], self.current_map.start[1])
         self.on_event(config.LEVEL_UP_EVENT)
 
-    def collide(self, x: float, y: float, width: float = 0.68)-> Vector2:
+    def collide(self, x: float, y: float, width: float = 0.68) -> Vector2:
         cx = math.floor(x)
         cy = math.floor(y)
         l = x - width / 2
@@ -118,14 +125,14 @@ class Game:
         height = 0.1
         t = y - height
         b = t + height
-        for x1 in range(cx-1, cx+2):
-            for y1 in range(cy-1, cy+2):
+        for x1 in range(cx - 1, cx + 2):
+            for y1 in range(cy - 1, cy + 2):
                 if not self.current_map.get_tile(x1, y1).has_collision():
                     continue
-                n = y1 <= t < y1+1
-                e = x1 <= r < x1+1
-                s = y1 <= b < y1+1
-                w = x1 <= l < x1+1
+                n = y1 <= t < y1 + 1
+                e = x1 <= r < x1 + 1
+                s = y1 <= b < y1 + 1
+                w = x1 <= l < x1 + 1
                 nw = n and w
                 ne = n and e
                 sw = s and w
@@ -140,6 +147,8 @@ class Game:
             match tile:
                 case Tile.bandage:
                     self.player.heal(config.BANDAGE_HEAL_AMOUNT)
+                    self.current_map.set_tile(x, y, Tile.empty)
+                    # FIXME: The previous does not account for reloading through saves.
                 case Tile.exit:
                     if not self.can_level_up():
                         self.on_event(config.DENIED_LEVEL_UP_EVENT)
@@ -154,23 +163,27 @@ class Game:
     def ranged(self):
         if self.shoot_cooldown > 0:
             return
+        print("ranged fire")
         enemy: Enemy | None = None
         distance: float | None = None
         for e in self.enemies:
             d = self.player.distance_from(e.x, e.y)
-            if d > config.SHOOTING_RANGE and (distance is None or d > distance):
+            if (
+                d < config.SHOOTING_RANGE
+                and (distance is None or d < distance)
+                or distance is None
+            ):
                 distance = d
                 enemy = e
 
         if enemy is not None:
             self.projectiles.append(Projectile(self.player.x, self.player.y, enemy))
-
-        self.shoot_cooldown = config.SHOOT_COOLDOWN
-        pass
+            self.shoot_cooldown = config.SHOOT_COOLDOWN
 
     def melee(self):
         if self.melee_cooldown > 0:
             return
+        print("melee attack")
         self.on_event(config.SWING_SWORD_EVENT)
         for enemy in self.enemies:
             d = self.player.distance_from(enemy.x, enemy.y)
@@ -178,10 +191,10 @@ class Game:
                 enemy.damage(self.player.strength)
 
         self.melee_cooldown = config.MELEE_COOLDOWN
-        pass
 
     def tick(self, deltatime: float):
-        if self.game_over: return
+        if self.game_over:
+            return
         if self.shoot_cooldown > 0:
             self.shoot_cooldown -= 1
         if self.melee_cooldown > 0:

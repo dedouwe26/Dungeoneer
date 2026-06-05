@@ -27,66 +27,6 @@ class Tile(Enum):
     def has_ground(self) -> bool:
         return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage)
 
-    # def render(self, neighbours: list[list[Self]]) -> list[tuple[int, int, str]]:
-    #     def empty(x, y):
-    #         return neighbours[x + 1][y + 1] == self.empty
-    #
-    #     def filled(x, y):
-    #         return neighbours[x + 1][y + 1].has_ground()
-    #
-    #     if self == self.empty:
-    #         return []
-    #     t = []
-    #     if self.has_ground():
-    #         t.append((0, 0, self.floor.value))
-    #     t.append((0, 0, self.value))
-    #     match self:
-    #         case self.floor:
-    #             # Shadows
-    #             if empty(1, 0):
-    #                 t.append((0, 0, "shadowpatchright"))
-    #
-    #             if empty(-1, 0):
-    #                 t.append((0, 0, "shadowpatchleft"))
-    #
-    #             if empty(0, 1):
-    #                 t.append((0, 0, "shadowpatchbottom"))
-    #
-    #             if empty(0, -1):
-    #                 t.append((0, 0, "shadowpatchtop"))
-    #
-    #             # Walls
-    #             if empty(0, -1):
-    #                 left = filled(1, 0) and empty(1, -1)
-    #
-    #                 right = filled(-1, 0) and empty(-1, -1)
-    #
-    #                 if left and right:
-    #                     t.append((0, -1, "wall"))
-    #                 elif not left and not right:
-    #                     t.append((0, -1, "wallboth"))
-    #                 elif left:
-    #                     t.append((0, -1, "wallleft"))
-    #                 elif right:
-    #                     t.append((0, -1, "wallright"))
-    #
-    #                 if empty(1, -1) and empty(1, 0):
-    #                     t.append((1, -1, "leftedge"))
-    #                 if empty(-1, -1) and empty(-1, 0):
-    #                     t.append((-1, -1, "rightedge"))
-    #
-    #             # edges
-    #
-    #             if empty(-1, 0):
-    #                 if empty(-1, 1):
-    #                     t.append((-1, 0, "rightedge"))
-    #             if empty(1, 0):
-    #                 if empty(1, 1):
-    #                     t.append((1, 0, "leftedge"))
-    #             if empty(0, 1):
-    #                 t.append((0, 1, "topedge"))
-    #     return t
-
 
 class Map:
     random: Random
@@ -231,3 +171,8 @@ class Map:
             if len(self.map) > x >= 0 and len(self.map[x]) > y >= 0
             else Tile.empty
         )
+
+    def set_tile(self, x: int, y: int, tile: Tile):
+        if not (len(self.map) > x >= 0 and len(self.map[x]) > y >= 0):
+            return
+        self.map[x][y] = tile
