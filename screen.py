@@ -330,6 +330,8 @@ class MainScreen(Screen):
         self.render_ui()
 
     def on_event(self, event_name: str):
+        global should_block_input
+
         def player_kill(i: int):
             sec_passed = (-i - 1) / config.FPS
             alpha = min(255, round(255 * (sec_passed)))
@@ -354,6 +356,7 @@ class MainScreen(Screen):
             self.display.blit(text, rect)
 
         def fade(i: int):
+            global should_block_input
             interval = 1 - (i / (config.FPS * 1))
             if interval >= 0.5:
                 interval = 1 - interval
@@ -362,22 +365,20 @@ class MainScreen(Screen):
             surf.fill(config.BACKGROUND)
             surf.set_alpha(alpha)
             self.display.blit(surf, (0, 0), surf.get_rect())
-<<<<<<< HEAD
             if i == (config.FPS * 1 - 1):
                 should_block_input = False
-=======
-            if i == (config.FPS*1 - 1):
+            if i == (config.FPS * 1 - 1):
                 self.should_block_input = False
+
         def deny(i: int):
-            interval = 1 - (i / (config.FPS*1))
+            interval = 1 - (i / (config.FPS * 1))
             if interval >= 0.5:
                 interval = 1 - interval
-            alpha = min(255, round(255 * abs(math.sin(interval*math.tau))))
+            alpha = min(255, round(255 * abs(math.sin(interval * math.tau))))
             surf = Surface((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
             surf.fill(config.BACKGROUND)
             surf.set_alpha(alpha)
             self.display.blit(surf, (0, 0), surf.get_rect())
->>>>>>> main
 
         super().on_event(event_name)
         match event_name:
@@ -386,16 +387,12 @@ class MainScreen(Screen):
                 self.game.game_over = True
                 effects.append([-1, player_kill])
             case config.LEVEL_UP_EVENT:
-<<<<<<< HEAD
                 should_block_input = True
                 effects.append([config.FPS * 1, fade])
-=======
                 self.should_block_input = True
-                self.effects.append([config.FPS*1, fade])
+                effects.append([config.FPS * 1, fade])
             case config.DENIED_LEVEL_UP_EVENT:
-                self.effects.append([config.FPS*1, deny])
-
->>>>>>> main
+                effects.append([config.FPS * 1, deny])
 
     def move(self, dx: float, dy: float):
         if should_block_input:
