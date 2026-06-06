@@ -4,10 +4,9 @@
 import math
 from random import Random
 from re import S
-from sre_compile import dis
 from typing import Any, Callable
 
-from pygame import Rect, Vector2
+from pygame import Vector2
 
 import config
 from enemy import Enemy
@@ -17,7 +16,7 @@ from player import Player
 
 class Projectile:
     enemy: Enemy
-    angle: float
+    angle: float = 0
     x: float
     y: float
 
@@ -29,19 +28,15 @@ class Projectile:
     def tick(self, deltatime: float) -> bool:
         dx = self.enemy.x - self.x
         dy = self.enemy.y - self.y
-        print("projectile tick", config.ARROW_SPEED, dx, dy, deltatime)
-        if dx <= config.ARROW_SPEED and dy <= config.ARROW_SPEED:
-            print("distance closed")
+        d = math.hypot(dx, dy)
+        if d <= 0.1:
             return True
-        print("projectile tick2")
         self.angle = math.degrees(math.atan2(-dy, dx))
         # Normalize
-        d = math.hypot(dx, dy)
         dx /= d
         dy /= d
         self.x += deltatime * config.ARROW_SPEED * dx
         self.y += deltatime * config.ARROW_SPEED * dy
-        print("wating for next", self.angle)
         return False
 
 
@@ -163,15 +158,13 @@ class Game:
     def ranged(self):
         if self.shoot_cooldown > 0:
             return
-        print("ranged fire")
         enemy: Enemy | None = None
         distance: float | None = None
         for e in self.enemies:
             d = self.player.distance_from(e.x, e.y)
+            if d > config.SHOOTING_RANGE: continue
             if (
-                d < config.SHOOTING_RANGE
-                and (distance is None or d < distance)
-                or distance is None
+                distance is None or d < distance
             ):
                 distance = d
                 enemy = e
@@ -200,10 +193,16 @@ class Game:
         if self.melee_cooldown > 0:
             self.melee_cooldown -= 1
 
-        for enemy in self.enemies:
-            enemy.tick(deltatime, self.player)
-
         for projectile in self.projectiles:
             if projectile.tick(deltatime):
                 projectile.enemy.damage(self.player.strength)
+                print("projectile damaged")
                 self.projectiles.remove(projectile)
+
+        delqueue = []
+        for i in range(len(self.enemies)):
+            enemy = self.enemies[i]
+            if not enemy.tick(deltatime, self.player):
+                delqueue.append(i)
+        for i in delqueue:
+            del self.enemies[i]

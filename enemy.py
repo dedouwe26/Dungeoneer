@@ -35,9 +35,9 @@ class Enemy:
     ) -> None:
         self.x = x
         self.y = y
-        self.strength = round(random.uniform(0.5, 1.1), 2) * level
-        self.speed = max(min(round(random.uniform(0.5, 1), 2) * level, 2.5), 0.5)
-        self.max_health = round(random.uniform(0.5, 1.1), 2) * level
+        self.strength = random.uniform(0.5, 1.1) * level
+        self.speed = max(min(random.uniform(0.5, 1) * level, 2.5), 0.5)
+        self.max_health = random.uniform(0.5, 1.1) * 5 * level
         self.health = self.max_health
         self.facing = bool(random.getrandbits(1))
         self.attack_range = 1  # TODO: You know the drill...
@@ -76,7 +76,7 @@ class Enemy:
             self.y += offset_y
             self.facing = offset_x > 0
 
-    def tick(self, deltatime: float, player: Player):
+    def tick(self, deltatime: float, player: Player) -> bool:
         if self.attack_cooldown > 0:
             self.attack_cooldown -= 1
 
@@ -85,3 +85,7 @@ class Enemy:
             self.move_closer_to(player.x, player.y, deltatime)
         if self.attack_range >= d:
             self.attack(player)
+        if self.health <= 0:
+            self.on_event(config.ENEMY_KILL_EVENT)
+            return False
+        return True

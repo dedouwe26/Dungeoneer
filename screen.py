@@ -316,7 +316,15 @@ class MainScreen(Screen):
         )
 
     def render_ui(self):
-
+        font = self.assets.get_font()
+        # enemies left
+        text = font.render(
+            str(len(self.game.enemies)), False, (240, 240, 221)
+        )
+        rect = text.get_rect()
+        rect.top = 0
+        rect.centerx = self.width / 2
+        self.display.blit(text, rect)
         pass
 
     def render(self, deltatime: float):
@@ -331,6 +339,26 @@ class MainScreen(Screen):
 
     def on_event(self, event_name: str):
         global should_block_input
+        def swing(i: int):
+            interval = 1 - (i / (config.FPS // 5))
+            angle = interval * 180 - 90
+            sword = self.assets.get_tile(config.MAIN_TILESET, "ironsword")
+            cropped = pygame.Surface(
+                (sword.width, sword.height), pygame.SRCALPHA
+            )
+            cropped.blit(self.mainset, (0, 0), sword)
+            rotated = pygame.transform.rotate(
+                pygame.transform.flip(cropped, False, True),
+                -angle,
+            )
+            offset = pygame.Vector2(0, -sword.w).rotate(interval * 180 + 90)
+
+            self.display.blit(
+                rotated,
+                rotated.get_rect(
+                    center=(self.width / 2, self.height / 2 - sword.w * 0.4) + offset
+                ),
+            )
 
         def player_kill(i: int):
             sec_passed = (-i - 1) / config.FPS
@@ -390,9 +418,10 @@ class MainScreen(Screen):
                 should_block_input = True
                 effects.append([config.FPS * 1, fade])
                 self.should_block_input = True
-                effects.append([config.FPS * 1, fade])
             case config.DENIED_LEVEL_UP_EVENT:
                 effects.append([config.FPS * 1, deny])
+            case config.SWING_SWORD_EVENT:
+                effects.append([config.FPS // 5, swing])
 
     def move(self, dx: float, dy: float):
         if should_block_input:
@@ -411,7 +440,6 @@ class MainScreen(Screen):
                 if should_block_input:
                     return
                 self.game.interact()
-                # TODO: Interact, attack, fire
             case config.K_ATTACK:
                 if should_block_input:
                     return
@@ -454,6 +482,26 @@ class MapScreen(Screen):
                 math.floor(self.y - half_height), math.ceil(self.y + half_height)
             ):
                 self.render_tile(x, y, self.map().get_tile(x, y))
+        
+        t = self.assets.get_tile(config.MAP_TILESET, "enemy")
+        if t is None:
+            print("enemy map tile not found")
+            return
+        for enemy in self.game.enemies:
+            x = round(enemy.x)
+            y = round(enemy.y)
+            screen = self.calculate_screen(x, y)
+            self.display.blit(self.maptileset, screen, t)
+        
+        t = self.assets.get_tile(config.MAP_TILESET, "player")
+        if t is None:
+            print("player map tile not found")
+            return
+        x = round(self.game.player.x)
+        y = round(self.game.player.y)
+        screen = self.calculate_screen(x, y)
+        self.display.blit(self.maptileset, screen, t)
+            
 
     def render_tile(self, x: int, y: int, tile: Tile):
         def empty(x2, y2):
@@ -462,6 +510,7 @@ class MapScreen(Screen):
         def r(s):
             t = self.assets.get_tile(config.MAP_TILESET, s)
             if t is None:
+                print("map tile not found: ", s)
                 return
             screen = self.calculate_screen(x, y)
             self.display.blit(self.maptileset, screen, t)
@@ -470,7 +519,7 @@ class MapScreen(Screen):
             if tile.has_ground():
                 r("floor")
             if tile != Tile.floor:
-                r(tile.value)
+                r(tile.get_simple_name())
         else:
             n = not empty(0, -1)
             e = not empty(1, 0)
@@ -484,14 +533,6 @@ class MapScreen(Screen):
                 r("rightedge")
             if w:
                 r("leftedge")
-            # if not empty(-1, -1) and not w and not n:
-            #     r("outercornerse")
-            # if not empty(1, -1) and not e and not n:
-            #     r("outercornersw")
-            # if not empty(-1, 1) and not w and not s:
-            #     r("outercornerne")
-            # if not empty(1, 1) and not e and not s:
-            #     r("outercornernw")
 
     def on_event(self, event_name: str):
         print("map event")

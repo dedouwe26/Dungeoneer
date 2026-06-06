@@ -26,6 +26,13 @@ class Tile(Enum):
 
     def has_ground(self) -> bool:
         return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage)
+    
+    def get_simple_name(self) -> str:
+        match self:
+            case self.chest:
+                return "chest"
+            case _:
+                return self.value
 
 
 class Map:

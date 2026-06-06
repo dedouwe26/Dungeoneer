@@ -54,6 +54,7 @@ class Application:
     def game_event(self, event_name: str):
         if self.on_game_event is None:
             return
+        print("event:", event_name)
         self.on_game_event(event_name)
 
     def play_sound(self, sound_name: str):

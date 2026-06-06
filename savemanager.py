@@ -27,6 +27,7 @@ class SaveManager:
         return ret
 
     def save(self, game: Game, save_name: str):
+        if game.game_over: return
         # TODO: Implement for game.
         self.latest_save = save_name
         path = self.save_path / Path(save_name + ".json")

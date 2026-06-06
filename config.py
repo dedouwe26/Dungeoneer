@@ -21,10 +21,10 @@ MAP_TILES_WIDTH: Final[float] = WINDOW_WIDTH / MAP_WORLD_SIZE
 MAP_TILES_HEIGHT: Final[float] = WINDOW_HEIGHT / MAP_WORLD_SIZE
 
 SHOOT_COOLDOWN: Final[int] = TPS * 1
-MELEE_COOLDOWN: Final[int] = TPS * 1
+MELEE_COOLDOWN: Final[int] = TPS * 0.8
 SHOOTING_RANGE: Final[float] = 8
-MELEE_RANGE: Final[float] = 8
-ARROW_SPEED: Final[float] = 0.05
+MELEE_RANGE: Final[float] = 1.1
+ARROW_SPEED: Final[float] = 5
 BANDAGE_HEAL_AMOUNT: Final[float] = 3
 
 ENEMY_DAMAGE_EVENT: Final[str] = "enemyhit"
