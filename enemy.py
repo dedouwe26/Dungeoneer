@@ -23,6 +23,7 @@ class Enemy:
     facing: bool
     collide: Callable[[float, float], Vector2]
     on_event: Callable[[str], None]
+    prev_step: Vector2
 
     def __init__(
         self,
@@ -49,6 +50,7 @@ class Enemy:
         self.on_event = on_event
         self.variant = random.randint(0, 10)
         self.is_melee = bool(random.getrandbits(1))
+        self.prev_step = Vector2(x, y)
 
     def damage(self, damage: float):
         if damage > 0:
@@ -62,19 +64,26 @@ class Enemy:
         self.attack_cooldown = self.attack_speed
         player.damage(self.strength)
 
+    def try_step(self):
+        p = Vector2(self.x, self.y)
+        d = self.prev_step.distance_squared_to(p)
+        if d > (config.STEP_THRESHOLD / self.speed / 3):
+            self.on_event(config.ENEMY_STEP_EVENT)
+            self.prev_step = p
+
     def move_closer_to(self, x: float, y: float, deltatime: float):
         dx = x - self.x
         dy = y - self.y
         distance = math.hypot(dx, dy)
-        if distance > 0:
-            offset_x = (dx / distance) * self.speed * deltatime
-            offset_y = (dy / distance) * self.speed * deltatime
-            col = self.collide(self.x + offset_x, self.y + offset_y)
-            offset_x *= col.x
-            offset_y *= col.y
-            self.x += offset_x
-            self.y += offset_y
-            self.facing = offset_x > 0
+        offset_x = (dx / distance) * self.speed * deltatime
+        offset_y = (dy / distance) * self.speed * deltatime
+        col = self.collide(self.x + offset_x, self.y + offset_y)
+        offset_x *= col.x
+        offset_y *= col.y
+        self.x += offset_x
+        self.y += offset_y
+        self.try_step()
+        self.facing = offset_x > 0
 
     def tick(self, deltatime: float, player: Player) -> bool:
         if self.attack_cooldown > 0:

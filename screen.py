@@ -129,7 +129,7 @@ class MainScreen(Screen):
             return self.map().get_tile(x + x2, y + y2) == Tile.empty
 
         def r2(x2, y2, s):
-            t = self.assets.get_tile(config.MAIN_TILESET, s)
+            t = self.assets.get_tile(config.MAIN_TILESET, s, self.app.get_variant(x2, y2, s))
             if t is None:
                 return
             self.render_in_world(
@@ -141,7 +141,7 @@ class MainScreen(Screen):
             )
 
         def r(x2, y2, s):
-            t = self.assets.get_tile(config.MAIN_TILESET, s)
+            t = self.assets.get_tile(config.MAIN_TILESET, s, self.app.get_variant(x2, y2, s))
             if t is None:
                 return
             self.render_in_world(
@@ -317,15 +317,35 @@ class MainScreen(Screen):
 
     def render_ui(self):
         font = self.assets.get_font()
-        # enemies left
+        # levels
         text = font.render(
-            str(len(self.game.enemies)), False, (240, 240, 221)
+            str(self.game.level), False, config.BLUE
         )
-        rect = text.get_rect()
-        rect.top = 0
-        rect.centerx = self.width / 2
+        self.display.blit(text, text.get_rect(top = 0, centerx = self.width / 2))
+
+        # coins
+        tile = self.assets.get_tile(config.MAIN_TILESET, "coin")
+        if tile is None:
+            print("no coin tile found")
+            return
+        self.display.blit(self.mainset, (0, 0), tile)
+        text = font.render(
+            str(self.game.player.coins), False, config.YELLOW
+        )
+        self.display.blit(text, text.get_rect(left = tile.w, top = 0))
+        
+        # enemy count
+        tile = self.assets.get_tile(config.MAIN_TILESET, "greenenemy", variant=0)
+        if tile is None:
+            print("no greenenemy 0 tile found")
+            return
+        self.display.blit(self.mainset, (self.width - tile.width, 0), tile)
+        text = font.render(
+            str(len(self.game.enemies)), False, config.GREEN
+        )
+        rect = text.get_rect(top = 0)
+        rect.x = self.width - tile.width - rect.width
         self.display.blit(text, rect)
-        pass
 
     def render(self, deltatime: float):
         super().render(deltatime)
@@ -340,7 +360,7 @@ class MainScreen(Screen):
     def on_event(self, event_name: str):
         global should_block_input
         def swing(i: int):
-            interval = 1 - (i / (config.FPS // 5))
+            interval = 1 - (i / (config.FPS // 4))
             angle = interval * 180 - 90
             sword = self.assets.get_tile(config.MAIN_TILESET, "ironsword")
             cropped = pygame.Surface(
@@ -387,16 +407,15 @@ class MainScreen(Screen):
             global should_block_input
             interval = 1 - (i / (config.FPS * 1))
             if interval >= 0.5:
+                if should_block_input:
+                    should_block_input = False
+                    self.game.create()
                 interval = 1 - interval
             alpha = min(255, round(255 * interval * 2))
             surf = Surface((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
             surf.fill(config.BACKGROUND)
             surf.set_alpha(alpha)
             self.display.blit(surf, (0, 0), surf.get_rect())
-            if i == (config.FPS * 1 - 1):
-                should_block_input = False
-            if i == (config.FPS * 1 - 1):
-                self.should_block_input = False
 
         def deny(i: int):
             interval = 1 - (i / (config.FPS * 1))
@@ -407,6 +426,22 @@ class MainScreen(Screen):
             surf.fill(config.BACKGROUND)
             surf.set_alpha(alpha)
             self.display.blit(surf, (0, 0), surf.get_rect())
+            
+        def chest(i: int):
+            interval = i / (config.FPS * 1)
+            t = self.assets.get_tile(config.MAIN_TILESET, "emptychest")
+            if t is None:
+                print("no such tile: emptychest")
+                return
+            x = self.map().chest_pos[0]
+            y = self.map().chest_pos[1]
+            self.render_in_world(
+                x,
+                y,
+                self.mainset,
+                t,
+                interval
+            )
 
         super().on_event(event_name)
         match event_name:
@@ -414,14 +449,15 @@ class MainScreen(Screen):
                 should_block_input = True
                 self.game.game_over = True
                 effects.append([-1, player_kill])
-            case config.LEVEL_UP_EVENT:
+            case config.LEVEL_FADE_EVENT:
                 should_block_input = True
                 effects.append([config.FPS * 1, fade])
-                self.should_block_input = True
             case config.DENIED_LEVEL_UP_EVENT:
                 effects.append([config.FPS * 1, deny])
             case config.SWING_SWORD_EVENT:
-                effects.append([config.FPS // 5, swing])
+                effects.append([config.FPS // 4, swing])
+            case config.ADD_TRAIT_EVENT:
+                effects.append([config.FPS * 1, chest])
 
     def move(self, dx: float, dy: float):
         if should_block_input:
@@ -488,8 +524,8 @@ class MapScreen(Screen):
             print("enemy map tile not found")
             return
         for enemy in self.game.enemies:
-            x = round(enemy.x)
-            y = round(enemy.y)
+            x = math.floor(enemy.x)
+            y = math.floor(enemy.y)
             screen = self.calculate_screen(x, y)
             self.display.blit(self.maptileset, screen, t)
         
@@ -497,8 +533,8 @@ class MapScreen(Screen):
         if t is None:
             print("player map tile not found")
             return
-        x = round(self.game.player.x)
-        y = round(self.game.player.y)
+        x = math.floor(self.game.player.x)
+        y = math.floor(self.game.player.y)
         screen = self.calculate_screen(x, y)
         self.display.blit(self.maptileset, screen, t)
             
@@ -535,8 +571,6 @@ class MapScreen(Screen):
                 r("leftedge")
 
     def on_event(self, event_name: str):
-        print("map event")
-        switch_screen(self.parent)
         self.parent.on_event(event_name)
 
     def tick(self, deltatime: float):
@@ -550,8 +584,8 @@ class MapScreen(Screen):
                 switch_screen(self.parent)
 
     def move(self, dx: float, dy: float):
-        self.x += dx * 8
-        self.y += dy * 8
+        self.x += dx * 12
+        self.y += dy * 12
 
 
 class MenuScreen(Screen):

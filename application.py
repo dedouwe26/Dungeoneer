@@ -6,6 +6,7 @@ from assetloader import AssetLoader
 import config
 from game import Game
 from savemanager import SaveManager
+from seed import Seed
 
 
 class Application:
@@ -23,6 +24,7 @@ class Application:
     on_keydown: Callable[[int], None]
     on_keyup: Callable[[int], None]
     on_game_event: Callable[[str], None]
+    seed: Seed
     scale: float = 1
 
     def __init__(self) -> None:
@@ -35,6 +37,7 @@ class Application:
         self.clock = pygame.time.Clock()
 
         # Load utilities.
+        self.seed = Seed()
         self.asset_loader = AssetLoader(Path("./assets/assets.json"))
         self.save_manager = SaveManager(Path("./saves/"))
 
@@ -49,7 +52,7 @@ class Application:
         pygame.display.set_caption("Dungeoneer")
         pygame.display.set_icon(self.asset_loader.get_logo())
 
-        self.game = Game(self.game_event)
+        self.game = Game(self.seed, self.game_event)
 
     def game_event(self, event_name: str):
         if self.on_game_event is None:
@@ -135,6 +138,15 @@ class Application:
             dy /= d
             return (dx, dy)
         return (0, 0)
+    
+    def get_variant(self, x: int, y: int, n: str, tileset: str = config.MAIN_TILESET) -> int:
+        asset = self.asset_loader.get_tile_variants(tileset, n)
+        if self.game.level == 0:
+            return asset[0]
+        # choices = asset[1]
+        # del choices[asset[0]]
+        # return choices[0]
+        return 0 # NOTE: No impl because no need yet, when: add variant soa to map randomized
 
     def stop(self):
         self.is_running = False

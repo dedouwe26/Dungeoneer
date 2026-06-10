@@ -1,25 +1,30 @@
 import json
 from pathlib import Path
+from random import Random
 
 import pygame
 
-import config
-
+import config  # noqa: F401
 
 class AssetLoader:
     logo: pygame.Surface
     font: pygame.font.Font
     tilesets: list[
         tuple[
-            pygame.Surface,
-            int,
-            dict[str, pygame.Rect | list[pygame.Rect]],
-            pygame.Surface,
+            pygame.Surface, # main surface
+            int, # tilesize
+            dict[str, tuple[ # tile
+                list[pygame.Rect], # variants
+                int, # lobby variant
+                list[float] # chances for each variant
+            ]], # tiles
+            pygame.Surface, # flipped surface
         ]
     ] = []
     sounds: dict[str, pygame.mixer.Sound] = {}
+    level_random: Random
 
-    def parse_tile(self, tile, tilesize: int, scale: int) -> pygame.Rect:
+    def parse_raw_tile(self, tile, tilesize: int, scale: int) -> pygame.Rect:
         x = 0
         y = 0
         w = tilesize
@@ -57,16 +62,28 @@ class AssetLoader:
             tiles = {}
             tilesize = tileset["tilesize"]
             scale = eval(tileset["virtualsize"])
-            for tile in tileset["tiles"]:
-                if "variants" in tileset["tiles"][tile]:
+
+            for tile in tileset["tiles"]: # tile
+                t = tileset["tiles"][tile]
+
+                if "variants" in t: # raw tile
                     variants = []
-                    for t in tileset["tiles"][tile]["variants"]:
-                        variants.append(self.parse_tile(t, tilesize, scale))
-                    tiles[tile] = variants
+                    for t in t["variants"]:
+                        variants.append(self.parse_raw_tile(t, tilesize, scale))
+                    variants = variants
                 else:
-                    tiles[tile] = self.parse_tile(
-                        tileset["tiles"][tile], tilesize, scale
-                    )
+                    variants = [self.parse_raw_tile(
+                        t, tilesize, scale
+                    )]
+
+                # optional variations
+                lobby_variant = 0
+                chances = [1 / len(variants) for i in range(len(variants))]
+                if "lobbyvariant" in t:
+                    lobby_variant = t["lobbyvariant"]
+                if "chances" in t:
+                    chances = t["chances"]
+                tiles[tile] = (variants, lobby_variant, chances)
 
             path = assetDirectory / Path(tileset["source"])
             old = pygame.image.load(path.resolve())
@@ -113,10 +130,8 @@ class AssetLoader:
             return None
         if tilename not in self.tilesets[tileset][2]:
             return None
-        tile = self.tilesets[tileset][2][tilename]
-        if not isinstance(tile, pygame.Rect):
-            tile = tile[variant % len(tile)]
-
+        tiles = self.tilesets[tileset][2][tilename][0]
+        tile = tiles[variant % len(tiles)]
         if flipped:
             s = self.get_tileset_surface(tileset)
             if s is None:
@@ -125,6 +140,14 @@ class AssetLoader:
                 s.get_width() - tile.x - tile.width, tile.y, tile.width, tile.height
             )
         return tile
+    
+    def get_tile_variants(self, tileset: int, tilename: str) -> tuple[int, list[float]]:
+        if len(self.tilesets) <= tileset:
+            return None
+        if tilename not in self.tilesets[tileset][2]:
+            return None
+        tile = self.tilesets[tileset][2][tilename]
+        return (tile[1], tile[2])
 
     def get_tile_size(self, tileset: int) -> int | None:
         if len(self.tilesets) <= tileset:

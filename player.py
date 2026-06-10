@@ -1,5 +1,4 @@
 import math
-from random import Random
 from typing import Callable, Generator
 
 from pygame import Vector2
@@ -20,6 +19,8 @@ class Player:
     facing: bool = False  # False for east
     on_event: Callable[[str], None]
     collide: Callable[[float, float], Vector2]
+    prev_step: Vector2
+    coins: int = 0
 
     def __init__(
         self, on_event: Callable[[str], None], collide: Callable[[float, float], Vector2]
@@ -39,17 +40,6 @@ class Player:
     def heal(self, amount: float):
         self.health = min(self.health + amount, self.max_health)
 
-    def add_trait(self, random: Random):
-        match random.randint(0, 3 if self.crit_chance != 1 else 2):
-            case 0:
-                self.max_health *= 1.1
-            case 1:
-                self.speed *= 1.1
-            case 3:
-                self.crit_chance = min(self.crit_chance + 0.1, 1)
-            case 2:
-                self.strength *= 1.1
-
     def tile_x(self):
         return math.floor(self.x)
 
@@ -67,6 +57,7 @@ class Player:
     def teleport(self, x: float, y: float):
         self.x = x
         self.y = y
+        self.prev_step = Vector2(self.x, self.y)
 
     def damage(self, damage: float):
         if damage > 0:
@@ -74,6 +65,13 @@ class Player:
         self.health -= damage
         if self.health <= 0:
             self.on_event(config.PLAYER_KILL_EVENT)
+
+    def try_step(self):
+        p = Vector2(self.x, self.y)
+        d = self.prev_step.distance_squared_to(p)
+        if d > (config.STEP_THRESHOLD / self.speed * 2):
+            self.on_event(config.PLAYER_STEP_EVENT)
+            self.prev_step = p
 
     def move(self, dx: float, dy: float):
         dx *= self.speed
@@ -87,3 +85,4 @@ class Player:
             self.facing = True
         self.x += dx
         self.y += dy
+        self.try_step()

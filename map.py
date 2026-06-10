@@ -11,6 +11,7 @@ from config import (
     ROOM_MIN_SIZE,
     MAP_SIZE,
 )
+from seed import Seed
 
 
 class Tile(Enum):
@@ -19,13 +20,14 @@ class Tile(Enum):
     chest = "closedchest"
     entrance = "entrance"
     exit = "exit"
+    escape = "escape"
     bandage = "bandage"
 
     def has_collision(self):
         return self in (self.empty, self.chest)
 
     def has_ground(self) -> bool:
-        return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage)
+        return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage, self.escape)
     
     def get_simple_name(self) -> str:
         match self:
@@ -41,9 +43,10 @@ class Map:
     map: list[list[Tile]]
     start: tuple[float, float]
     end: tuple[float, float]
+    chest_pos: tuple[int, int]
 
-    def __init__(self, random: Random, level: int) -> None:
-        self.random = random
+    def __init__(self, seed: Seed, level: int) -> None:
+        self.random = seed.game()
         self.level = level
         self.map = [[Tile.empty for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
 
@@ -137,8 +140,8 @@ class Map:
         )
         last_room = len(rooms) - 1
         end = (
-            round(rooms[last_room][0] + rooms[last_room][2] / 2),
-            round(rooms[last_room][1] + rooms[last_room][3] / 2),
+            rooms[last_room][0] + rooms[last_room][2] // 2,
+            rooms[last_room][1] + rooms[last_room][3] // 2,
         )
         self.start = (start[0] + 0.5, start[1] + 0.5)
         self.end = (end[0] + 0.5, end[1] + 0.5)
@@ -154,10 +157,15 @@ class Map:
             for j in range(MAP_SIZE)
             if self.map[i][j] == Tile.floor
         ]
+        
+        # escape
+        # if (self.level % 5) == 0 and self.level != 0:
+        room = rooms[len(rooms) // 2]
+        self.map[room[0] + room[2] // 2][room[1] + room[3] // 2] = Tile.escape
 
-        chest_pos = self.random.choice(floor_positions)
-        floor_positions.remove(chest_pos)
-        self.map[chest_pos[0]][chest_pos[1]] = Tile.chest
+        self.chest_pos = self.random.choice(floor_positions)
+        floor_positions.remove(self.chest_pos)
+        self.map[self.chest_pos[0]][self.chest_pos[1]] = Tile.chest
 
         # Bandages (health dependent)
         bandages = self.random.sample(
@@ -166,6 +174,26 @@ class Map:
 
         for position in bandages:
             self.map[position[0]][position[1]] = Tile.bandage
+            
+    def generate_lobby(self):
+        half = MAP_SIZE // 2
+        half_width = 4
+        size = 15
+        for col in range(len(self.map)):
+            x = abs(col - half)
+            for row in range(len(self.map[col])):
+                y = abs(row - half)
+                filled = (
+                    x <= half_width or y <= half_width
+                ) and (
+                    x < size and y < size
+                )
+                if filled:
+                    self.map[col][row] = Tile.floor
+
+        self.map[half + size - half_width][half] = Tile.exit
+
+        self.start = (half, half)
 
     def enumerate(self) -> Generator[tuple[int, int, Tile], None, None]:
         for x, column in enumerate(self.map):

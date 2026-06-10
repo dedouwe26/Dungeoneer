@@ -5,30 +5,7 @@
 			"tilesize": 16,
 			"virtualsize": "config.WORLD_SIZE / tilesize",
 			"tiles": {
-				"healthbackground": {
-					"x": 5,
-					"y": 2,
-					"w": 3,
-					"rawh": 8
-				},
-				"healthforeground": {
-					"x": 5,
-					"rawy": 40,
-					"w": 3,
-					"rawh": 8
-				},
-				"fullhealth": {
-					"x": 3,
-					"y": 0,
-					"w": 3,
-					"rawh": 8
-				},
-				"health": {
-					"x": 3,
-					"rawy": 8,
-					"w": 3,
-					"rawh": 8
-				},
+				
 				"shadowpatchbottom": {
 					"x": 0,
 					"y": 0
@@ -56,6 +33,14 @@
 				"wallleft": {
 					"x": 3,
 					"y": 1
+				},
+				"escape": {
+					"x": 5,
+					"y": 2
+				},
+				"coin": {
+					"x": 6,
+					"y": 2
 				},
 				"wall": {
 					"x": 4,
@@ -280,6 +265,10 @@
 					"x": 5,
 					"y": 1
 				},
+				"escape": {
+					"x": 4,
+					"y": 2
+				},
 				"topedge": {
 					"x": 0,
 					"y": 1
@@ -325,6 +314,8 @@
 		"enemykill": "./kill.wav",
 		"levelup": "./levelup.wav",
 		"deniedlevelup": "./deny.wav",
-		"pickup": "./pickup.wav"
+		"pickup": "./pickup.wav",
+		"playerstep": "./step.wav",
+		"enemystep": "./enemy_step.wav"
 	}
 }
