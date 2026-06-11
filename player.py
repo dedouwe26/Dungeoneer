@@ -14,8 +14,10 @@ class Player:
     speed: float = 3
     crit_chance: float = 0.05
     strength: float = 1
+    arrow_strength: float = 0.5
     bow_cooldown: int = 0  # in ticks
     sword_cooldown: int = 0  # in ticks
+    bow_range: float = 6
     facing: bool = False  # False for east
     on_event: Callable[[str], None]
     collide: Callable[[float, float], Vector2]

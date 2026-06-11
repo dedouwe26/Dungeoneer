@@ -143,11 +143,21 @@ class Application:
         asset = self.asset_loader.get_tile_variants(tileset, n)
         if self.game.level == 0:
             return asset[0]
-        # choices = asset[1]
-        # del choices[asset[0]]
-        # return choices[0]
-        return 0 # NOTE: No impl because no need yet, when: add variant soa to map randomized
-
+        if 0 < x <= config.MAP_SIZE or 0 < y <= config.MAP_SIZE:
+            return 0
+        random = self.game.current_map.random_map[x][y]
+        if random >= 200:
+            return random - 200
+        random /= 100
+        chances = asset[1]
+        variant = 0
+        for i in range(len(chances)):
+            if chances[i] > random:
+                variant = i
+                break
+            random -= chances[i]
+        self.game.current_map.random_map[x][y] = 200 + variant
+        return variant
     def stop(self):
         self.is_running = False
         print("Stopping!")

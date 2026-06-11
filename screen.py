@@ -129,27 +129,31 @@ class MainScreen(Screen):
             return self.map().get_tile(x + x2, y + y2) == Tile.empty
 
         def r2(x2, y2, s):
+            x2 += x
+            y2 += y
             t = self.assets.get_tile(config.MAIN_TILESET, s, self.app.get_variant(x2, y2, s))
             if t is None:
                 return
             self.render_in_world(
-                x + x2,
-                y + y2,
+                x2,
+                y2,
                 self.mainset,
                 t,
-                self.calculate_loweropacity(x + x2, y + y2),
+                self.calculate_loweropacity(x2, y2),
             )
 
         def r(x2, y2, s):
+            x2 += x
+            y2 += y
             t = self.assets.get_tile(config.MAIN_TILESET, s, self.app.get_variant(x2, y2, s))
             if t is None:
                 return
             self.render_in_world(
-                x + x2,
-                y + y2,
+                x2,
+                y2,
                 self.mainset,
                 t,
-                self.calculate_upperopacity(x + x2, y + y2),
+                self.calculate_upperopacity(x2, y2),
             )
 
         n = empty(0, -1)
@@ -330,7 +334,7 @@ class MainScreen(Screen):
             return
         self.display.blit(self.mainset, (0, 0), tile)
         text = font.render(
-            str(self.game.player.coins), False, config.YELLOW
+            str(self.game.player.coins), False, config.CYAN
         )
         self.display.blit(text, text.get_rect(left = tile.w, top = 0))
         
@@ -357,28 +361,37 @@ class MainScreen(Screen):
         render_effects()
         self.render_ui()
 
+    def render_item(self, s: str, variant: int, angle: float, distant: bool = False, tileset: int = config.MAIN_TILESET):
+            item = self.assets.get_tile(tileset, s, variant)
+            cropped = pygame.Surface(
+                (item.width, item.height), pygame.SRCALPHA
+            )
+            cropped.blit(self.mainset, (0, 0), item)
+            rotated = pygame.transform.rotate(
+                pygame.transform.flip(cropped, False, True),
+                -angle,
+            )
+            if distant:
+                offset = pygame.Vector2(0, 0).rotate(angle)
+            else:
+                offset = pygame.Vector2(0, -item.w).rotate(angle)
+
+            self.display.blit(
+                rotated,
+                rotated.get_rect(
+                    center=(self.width / 2, self.height / 2 - item.width * 0.4) + offset
+                ),
+            )
+
     def on_event(self, event_name: str):
         global should_block_input
         def swing(i: int):
             interval = 1 - (i / (config.FPS // 4))
             angle = interval * 180 - 90
-            sword = self.assets.get_tile(config.MAIN_TILESET, "ironsword")
-            cropped = pygame.Surface(
-                (sword.width, sword.height), pygame.SRCALPHA
-            )
-            cropped.blit(self.mainset, (0, 0), sword)
-            rotated = pygame.transform.rotate(
-                pygame.transform.flip(cropped, False, True),
-                -angle,
-            )
-            offset = pygame.Vector2(0, -sword.w).rotate(interval * 180 + 90)
-
-            self.display.blit(
-                rotated,
-                rotated.get_rect(
-                    center=(self.width / 2, self.height / 2 - sword.w * 0.4) + offset
-                ),
-            )
+            self.render_item("sword", self.game.variant_sword(), angle)
+        def bow(i: int):
+            # interval = i / (config.FPS // 4)
+            self.render_item("bow", self.game.variant_bow(), 360 - self.game.proj_angle + 270, True)
 
         def player_kill(i: int):
             sec_passed = (-i - 1) / config.FPS
@@ -423,7 +436,7 @@ class MainScreen(Screen):
                 interval = 1 - interval
             alpha = min(255, round(255 * abs(math.sin(interval * math.tau))))
             surf = Surface((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
-            surf.fill(config.BACKGROUND)
+            surf.fill(config.RED)
             surf.set_alpha(alpha)
             self.display.blit(surf, (0, 0), surf.get_rect())
             
@@ -458,6 +471,8 @@ class MainScreen(Screen):
                 effects.append([config.FPS // 4, swing])
             case config.ADD_TRAIT_EVENT:
                 effects.append([config.FPS * 1, chest])
+            case config.SHOOT_EVENT:
+                effects.append([config.FPS // 4, bow])
 
     def move(self, dx: float, dy: float):
         if should_block_input:
@@ -544,7 +559,7 @@ class MapScreen(Screen):
             return self.map().get_tile(x + x2, y + y2) == Tile.empty
 
         def r(s):
-            t = self.assets.get_tile(config.MAP_TILESET, s)
+            t = self.assets.get_tile(config.MAP_TILESET, s, self.app.get_variant(x, y, s, tileset=config.MAP_TILESET))
             if t is None:
                 print("map tile not found: ", s)
                 return

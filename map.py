@@ -44,6 +44,7 @@ class Map:
     start: tuple[float, float]
     end: tuple[float, float]
     chest_pos: tuple[int, int]
+    random_map: list[list[int]]
 
     def __init__(self, seed: Seed, level: int) -> None:
         self.random = seed.game()
@@ -159,9 +160,9 @@ class Map:
         ]
         
         # escape
-        # if (self.level % 5) == 0 and self.level != 0:
-        room = rooms[len(rooms) // 2]
-        self.map[room[0] + room[2] // 2][room[1] + room[3] // 2] = Tile.escape
+        if (self.level % 5) == 0:
+            room = rooms[len(rooms) // 2]
+            self.map[room[0] + room[2] // 2][room[1] + room[3] // 2] = Tile.escape
 
         self.chest_pos = self.random.choice(floor_positions)
         floor_positions.remove(self.chest_pos)
@@ -174,6 +175,8 @@ class Map:
 
         for position in bandages:
             self.map[position[0]][position[1]] = Tile.bandage
+
+        self.generate_random_map()
             
     def generate_lobby(self):
         half = MAP_SIZE // 2
@@ -194,6 +197,10 @@ class Map:
         self.map[half + size - half_width][half] = Tile.exit
 
         self.start = (half, half)
+        self.random_map = [[0 for y in range(MAP_SIZE)] for x in range(MAP_SIZE)]
+        
+    def generate_random_map(self):
+        self.random_map = [[self.random.randint(0, 100) for y in range(MAP_SIZE)] for x in range(MAP_SIZE)]
 
     def enumerate(self) -> Generator[tuple[int, int, Tile], None, None]:
         for x, column in enumerate(self.map):

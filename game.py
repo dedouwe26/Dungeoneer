@@ -51,6 +51,7 @@ class Game:
 
     enemies: list[Enemy] = []
     projectiles: list[Projectile] = []
+    proj_angle: float
     on_event: Callable[[str], None]
     is_initialized: bool = False
 
@@ -168,7 +169,7 @@ class Game:
         distance: float | None = None
         for e in self.enemies:
             d = self.player.distance_from(e.x, e.y)
-            if d > config.SHOOTING_RANGE:
+            if d > self.player.bow_range:
                 continue
             if (
                 distance is None or d < distance
@@ -177,7 +178,11 @@ class Game:
                 enemy = e
 
         if enemy is not None:
-            self.projectiles.append(Projectile(self.player.x, self.player.y, enemy))
+            proj = Projectile(self.player.x, self.player.y, enemy)
+            proj.tick(0.010)
+            self.proj_angle = proj.angle
+            self.projectiles.append(proj)
+            self.on_event(config.SHOOT_EVENT)
             self.player.bow_cooldown = config.SHOOT_COOLDOWN
 
     def melee(self):
@@ -202,7 +207,7 @@ class Game:
 
         for projectile in self.projectiles:
             if projectile.tick(deltatime):
-                projectile.enemy.damage(self.player.strength)
+                projectile.enemy.damage(self.player.arrow_strength)
                 print("projectile damaged")
                 self.projectiles.remove(projectile)
 
@@ -213,3 +218,11 @@ class Game:
                 delqueue.append(i)
         for i in delqueue:
             del self.enemies[i]
+            
+    def variant_arrow(self) -> int:
+        return min(max(0, math.floor(self.player.arrow_strength * 2) - 1), 8)
+    def variant_bow(self) -> int:
+        print()
+        return 0 if self.player.bow_range < 7 else 1
+    def variant_sword(self) -> int:
+        return min(max(0, math.floor(self.player.strength) - 1), 7)

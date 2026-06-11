@@ -16,6 +16,7 @@ YELLOW: Final[Color] = Color(204, 170, 68)
 WHITE: Final[Color] = Color(240, 240, 221)
 BLUE: Final[Color] = Color(90, 140, 166)
 GREEN: Final[Color] = Color(104, 110, 70)
+CYAN: Final[Color] = Color(146, 232, 192)
 WORLD_SIZE: Final[int] = 32
 MAP_WORLD_SIZE: Final[int] = WORLD_SIZE // 4
 TILES_WIDTH: Final[float] = WINDOW_WIDTH / WORLD_SIZE
@@ -25,7 +26,6 @@ MAP_TILES_HEIGHT: Final[float] = WINDOW_HEIGHT / MAP_WORLD_SIZE
 
 SHOOT_COOLDOWN: Final[int] = TPS * 1
 MELEE_COOLDOWN: Final[int] = TPS * 0.8
-SHOOTING_RANGE: Final[float] = 8
 MELEE_RANGE: Final[float] = 1.8
 ARROW_SPEED: Final[float] = 5
 BANDAGE_HEAL_AMOUNT: Final[float] = 3
@@ -41,6 +41,7 @@ PLAYER_STEP_EVENT: Final[str] = "playerstep"
 DENIED_LEVEL_UP_EVENT: Final[str] = "deniedlevelup"
 LEVEL_FADE_EVENT: Final[str] = "levelup"
 ADD_TRAIT_EVENT: Final[str] = "pickup"
+SHOOT_EVENT: Final[str] = "shoot"
 
 K_MOVE_UP: Final[int] = pygame.K_w
 K_MOVE_LEFT: Final[int] = pygame.K_a

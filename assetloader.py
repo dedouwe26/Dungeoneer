@@ -68,8 +68,8 @@ class AssetLoader:
 
                 if "variants" in t: # raw tile
                     variants = []
-                    for t in t["variants"]:
-                        variants.append(self.parse_raw_tile(t, tilesize, scale))
+                    for t2 in t["variants"]:
+                        variants.append(self.parse_raw_tile(t2, tilesize, scale))
                     variants = variants
                 else:
                     variants = [self.parse_raw_tile(
