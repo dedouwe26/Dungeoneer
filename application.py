@@ -5,6 +5,7 @@ import pygame
 from assetloader import AssetLoader
 import config
 from game import Game
+from map import Tile
 from savemanager import SaveManager
 from seed import Seed
 
@@ -143,12 +144,15 @@ class Application:
         asset = self.asset_loader.get_tile_variants(tileset, n)
         if self.game.level == 0:
             return asset[0]
-        if 0 < x <= config.MAP_SIZE or 0 < y <= config.MAP_SIZE:
+        if not config.MAP_SIZE > x >= 0 or not config.MAP_SIZE > y >= 0:
+            return 0
+        t = self.game.current_map.get_tile(x, y)
+        if t.has_ground() and n == Tile.floor.value and t != Tile.floor:
             return 0
         random = self.game.current_map.random_map[x][y]
         if random >= 200:
             return random - 200
-        random /= 100
+        random /= 101
         chances = asset[1]
         variant = 0
         for i in range(len(chances)):

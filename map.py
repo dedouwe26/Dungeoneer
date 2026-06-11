@@ -22,17 +22,20 @@ class Tile(Enum):
     exit = "exit"
     escape = "escape"
     bandage = "bandage"
+    obstacle = "obstacle"
 
     def has_collision(self):
-        return self in (self.empty, self.chest)
+        return self in (self.empty, self.chest, self.obstacle)
 
     def has_ground(self) -> bool:
-        return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage, self.escape)
+        return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage, self.escape, self.obstacle)
     
     def get_simple_name(self) -> str:
         match self:
             case self.chest:
                 return "chest"
+            case self.obstacle:
+                return self.floor.value
             case _:
                 return self.value
 
@@ -81,7 +84,7 @@ class Map:
         for room in rooms:
             for i in range(room[0], room[0] + room[2]):
                 for j in range(room[1], room[1] + room[3]):
-                    self.map[i][j] = Tile.floor
+                    self.map[i][j] = Tile.obstacle if self.random.random() < 0.05 else Tile.floor
 
         # Generate hallways
         for i in range(len(rooms) - 1):

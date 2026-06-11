@@ -87,7 +87,7 @@ def reset():
     effects = []
 
 
-def render_effects():
+def render_effects(deltatime):
     deleted = []
     for i in range(len(effects)):
         effect = effects[i]
@@ -358,7 +358,7 @@ class MainScreen(Screen):
         self.render_enemies()
         self.render_player()
         self.render_projectiles()
-        render_effects()
+        render_effects(deltatime)
         self.render_ui()
 
     def render_item(self, s: str, variant: int, angle: float, distant: bool = False, tileset: int = config.MAIN_TILESET):
@@ -368,13 +368,13 @@ class MainScreen(Screen):
             )
             cropped.blit(self.mainset, (0, 0), item)
             rotated = pygame.transform.rotate(
-                pygame.transform.flip(cropped, False, True),
-                -angle,
+                pygame.transform.flip(cropped, False, False),
+                -angle + 90,
             )
             if distant:
                 offset = pygame.Vector2(0, 0).rotate(angle)
             else:
-                offset = pygame.Vector2(0, -item.w).rotate(angle)
+                offset = pygame.Vector2(-item.w * 0.6, -item.w * 0.6).rotate(angle)
 
             self.display.blit(
                 rotated,
@@ -387,7 +387,7 @@ class MainScreen(Screen):
         global should_block_input
         def swing(i: int):
             interval = 1 - (i / (config.FPS // 4))
-            angle = interval * 180 - 90
+            angle = interval * 180 + 90
             self.render_item("sword", self.game.variant_sword(), angle)
         def bow(i: int):
             # interval = i / (config.FPS // 4)
