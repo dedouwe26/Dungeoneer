@@ -220,9 +220,10 @@ class Game:
             del self.enemies[i]
             
     def variant_arrow(self) -> int:
-        return min(max(0, math.floor(self.player.arrow_strength * 2) - 1), 8)
+        v = min(max(0, math.floor(self.player.arrow_strength * 2) - 1), 8)
+        print(v)
+        return 
     def variant_bow(self) -> int:
-        print()
         return 0 if self.player.bow_range < 7 else 1
     def variant_sword(self) -> int:
         return min(max(0, math.floor(self.player.strength) - 1), 7)

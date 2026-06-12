@@ -361,7 +361,7 @@ class MainScreen(Screen):
         render_effects(deltatime)
         self.render_ui()
 
-    def render_item(self, s: str, variant: int, angle: float, distant: bool = False, tileset: int = config.MAIN_TILESET):
+    def render_item(self, s: str, variant: int, angle: float, close: bool = False, tileset: int = config.MAIN_TILESET):
             item = self.assets.get_tile(tileset, s, variant)
             cropped = pygame.Surface(
                 (item.width, item.height), pygame.SRCALPHA
@@ -371,7 +371,7 @@ class MainScreen(Screen):
                 pygame.transform.flip(cropped, False, False),
                 -angle + 90,
             )
-            if distant:
+            if close:
                 offset = pygame.Vector2(0, 0).rotate(angle)
             else:
                 offset = pygame.Vector2(-item.w * 0.6, -item.w * 0.6).rotate(angle)
@@ -391,7 +391,7 @@ class MainScreen(Screen):
             self.render_item("sword", self.game.variant_sword(), angle)
         def bow(i: int):
             # interval = i / (config.FPS // 4)
-            self.render_item("bow", self.game.variant_bow(), 360 - self.game.proj_angle + 270, True)
+            self.render_item("bow", self.game.variant_bow(), 360 - self.game.proj_angle + 225, True)
 
         def player_kill(i: int):
             sec_passed = (-i - 1) / config.FPS
