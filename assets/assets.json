@@ -6,20 +6,72 @@
 			"virtualsize": "config.WORLD_SIZE / tilesize",
 			"tiles": {
 				"shadowpatchbottom": {
-					"x": 0,
-					"y": 0
+					"variants": [
+						{
+							"x": 0,
+							"y": 0
+						},
+						{
+							"x": 13,
+							"y": 3
+						}
+					],
+					"chances": [
+						1.0,
+						0.0
+					],
+					"lobbyvariant": 1
 				},
 				"shadowpatchtop": {
-					"x": 1,
-					"y": 0
+					"variants": [
+						{
+							"x": 1,
+							"y": 0
+						},
+						{
+							"x": 14,
+							"y": 3
+						}
+					],
+					"chances": [
+						1.0,
+						0.0
+					],
+					"lobbyvariant": 1
 				},
 				"shadowpatchright": {
-					"x": 2,
-					"y": 0
+					"variants": [
+						{
+							"x": 2,
+							"y": 0
+						},
+						{
+							"x": 15,
+							"y": 3
+						}
+					],
+					"chances": [
+						1.0,
+						0.0
+					],
+					"lobbyvariant": 1
 				},
 				"shadowpatchleft": {
-					"x": 0,
-					"y": 1
+					"variants": [
+						{
+							"x": 0,
+							"y": 1
+						},
+						{
+							"x": 13,
+							"y": 4
+						}
+					],
+					"chances": [
+						1.0,
+						0.0
+					],
+					"lobbyvariant": 1
 				},
 				"health": {
 					"variants": [
@@ -54,8 +106,21 @@
 					"y": 1
 				},
 				"wallleft": {
-					"x": 3,
-					"y": 1
+					"variants": [
+						{
+							"x": 3,
+							"y": 1
+						},
+						{
+							"x": 12,
+							"y": 2
+						}
+					],
+					"chances": [
+						1.0,
+						0.0
+					],
+					"lobbyvariant": 1
 				},
 				"escape": {
 					"x": 5,
@@ -63,6 +128,10 @@
 				},
 				"coin": {
 					"x": 6,
+					"y": 2
+				},
+				"platform": {
+					"x": 7,
 					"y": 2
 				},
 				"wall": {
@@ -74,14 +143,35 @@
 						{
 							"x": 7,
 							"y": 1
+						},
+						{
+							"x": 13,
+							"y": 2
 						}
 					],
-					"chances": [0.8, 0.2],
-					"lobbyvariant": 0
+					"chances": [
+						0.8,
+						0.2,
+						0.0
+					],
+					"lobbyvariant": 2
 				},
 				"wallright": {
-					"x": 5,
-					"y": 1
+					"variants": [
+						{
+							"x": 5,
+							"y": 1
+						},
+						{
+							"x": 14,
+							"y": 2
+						}
+					],
+					"chances": [
+						1.0,
+						0.0
+					],
+					"lobbyvariant": 1
 				},
 				"wallboth": {
 					"variants": [
@@ -92,10 +182,18 @@
 						{
 							"x": 7,
 							"y": 3
+						},
+						{
+							"x": 15,
+							"y": 2
 						}
 					],
-					"chances": [0.8, 0.2],
-					"lobbyvariant": 0
+					"chances": [
+						0.8,
+						0.2,
+						0.0
+					],
+					"lobbyvariant": 2
 				},
 				"arrow": {
 					"variants": [
@@ -202,8 +300,20 @@
 						{
 							"x": 10,
 							"y": 4
+						},
+						{
+							"x": 14,
+							"y": 4
 						}
-					]
+					],
+					"chances": [
+						0.25,
+						0.25,
+						0.25,
+						0.25,
+						0.0
+					],
+					"lobbyvariant": 4
 				},
 				"crit": {
 					"x": 0,
@@ -230,8 +340,21 @@
 					"y": 3
 				},
 				"floor": {
-					"x": 1,
-					"y": 2
+					"variants": [
+						{
+							"x": 1,
+							"y": 2
+						},
+						{
+							"x": 12,
+							"y": 3
+						}
+					],
+					"chances": [
+						1.0,
+						0.0
+					],
+					"lobbyvariant": 1
 				},
 				"rightedge": {
 					"x": 2,
@@ -436,6 +559,8 @@
 		"pickup": "./pickup.wav",
 		"playerstep": "./step.wav",
 		"enemystep": "./enemy_step.wav",
-		"shoot": "./shoot.wav"
+		"shoot": "./shoot.wav",
+		"buy": "./pickup.wav",
+		"heal": "./pickup.wav"
 	}
 }

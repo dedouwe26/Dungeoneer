@@ -10,22 +10,24 @@ class Player:
     x: float
     y: float
     max_health: float = 10
-    health: float = max_health
     speed: float = 3
-    crit_chance: float = 0.05
     strength: float = 1
     arrow_strength: float = 0.5
+    bow_range: float = 6
+
+    health: float = max_health
     bow_cooldown: int = 0  # in ticks
     sword_cooldown: int = 0  # in ticks
-    bow_range: float = 6
     facing: bool = False  # False for east
     on_event: Callable[[str], None]
     collide: Callable[[float, float], Vector2]
     prev_step: Vector2
-    coins: int = 0
+    coins: int = 100
 
     def __init__(
-        self, on_event: Callable[[str], None], collide: Callable[[float, float], Vector2]
+        self,
+        on_event: Callable[[str], None],
+        collide: Callable[[float, float], Vector2],
     ) -> None:
         self.on_event = on_event
         self.collide = collide

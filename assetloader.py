@@ -6,19 +6,23 @@ import pygame
 
 import config  # noqa: F401
 
+
 class AssetLoader:
     logo: pygame.Surface
     font: pygame.font.Font
     tilesets: list[
         tuple[
-            pygame.Surface, # main surface
-            int, # tilesize
-            dict[str, tuple[ # tile
-                list[pygame.Rect], # variants
-                int, # lobby variant
-                list[float] # chances for each variant
-            ]], # tiles
-            pygame.Surface, # flipped surface
+            pygame.Surface,  # main surface
+            int,  # tilesize
+            dict[
+                str,
+                tuple[  # tile
+                    list[pygame.Rect],  # variants
+                    int,  # lobby variant
+                    list[float],  # chances for each variant
+                ],
+            ],  # tiles
+            pygame.Surface,  # flipped surface
         ]
     ] = []
     sounds: dict[str, pygame.mixer.Sound] = {}
@@ -63,18 +67,16 @@ class AssetLoader:
             tilesize = tileset["tilesize"]
             scale = eval(tileset["virtualsize"])
 
-            for tile in tileset["tiles"]: # tile
+            for tile in tileset["tiles"]:  # tile
                 t = tileset["tiles"][tile]
 
-                if "variants" in t: # raw tile
+                if "variants" in t:  # raw tile
                     variants = []
                     for t2 in t["variants"]:
                         variants.append(self.parse_raw_tile(t2, tilesize, scale))
                     variants = variants
                 else:
-                    variants = [self.parse_raw_tile(
-                        t, tilesize, scale
-                    )]
+                    variants = [self.parse_raw_tile(t, tilesize, scale)]
 
                 # optional variations
                 lobby_variant = 0
@@ -131,7 +133,7 @@ class AssetLoader:
         if tilename not in self.tilesets[tileset][2]:
             return None
         tiles = self.tilesets[tileset][2][tilename][0]
-        tile = tiles[variant % len(tiles)]
+        tile = tiles[min(variant, len(tiles) - 1)]
         if flipped:
             s = self.get_tileset_surface(tileset)
             if s is None:
@@ -140,8 +142,10 @@ class AssetLoader:
                 s.get_width() - tile.x - tile.width, tile.y, tile.width, tile.height
             )
         return tile
-    
-    def get_tile_variants(self, tileset: int, tilename: str) -> tuple[int, list[float]]:
+
+    def get_tile_variants(
+        self, tileset: int, tilename: str
+    ) -> tuple[int, list[float]] | None:
         if len(self.tilesets) <= tileset:
             return None
         if tilename not in self.tilesets[tileset][2]:

@@ -46,7 +46,9 @@ class Application:
         self.real_display = pygame.display.set_mode(
             (config.WINDOW_WIDTH, config.WINDOW_HEIGHT), vsync=1, flags=pygame.RESIZABLE
         )
-        self.display = pygame.Surface((config.WINDOW_WIDTH, config.WINDOW_HEIGHT), flags=pygame.SRCALPHA)
+        self.display = pygame.Surface(
+            (config.WINDOW_WIDTH, config.WINDOW_HEIGHT), flags=pygame.SRCALPHA
+        )
         self.update_scale(self.real_display.get_width(), self.real_display.get_height())
 
         # Set window properties.
@@ -139,9 +141,13 @@ class Application:
             dy /= d
             return (dx, dy)
         return (0, 0)
-    
-    def get_variant(self, x: int, y: int, n: str, tileset: str = config.MAIN_TILESET) -> int:
+
+    def get_variant(
+        self, x: int, y: int, n: str, tileset: int = config.MAIN_TILESET
+    ) -> int:
         asset = self.asset_loader.get_tile_variants(tileset, n)
+        if asset is None:
+            return 0
         if self.game.level == 0:
             return asset[0]
         if not config.MAP_SIZE > x >= 0 or not config.MAP_SIZE > y >= 0:
@@ -162,6 +168,7 @@ class Application:
             random -= chances[i]
         self.game.current_map.random_map[x][y] = 200 + variant
         return variant
+
     def stop(self):
         self.is_running = False
         print("Stopping!")

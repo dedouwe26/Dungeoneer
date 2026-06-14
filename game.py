@@ -76,14 +76,18 @@ class Game:
         self.enemies = []
         self.projectiles = []
         self.current_map = Map(self.seed, self.level)
-        if self.level == 0: # Lobby
+        if self.level == 0:  # Lobby
             self.current_map.generate_lobby()
             self.player.teleport(self.current_map.start[0], self.current_map.start[1])
         else:
             self.current_map.generate(self.calculate_bandage_count())
             for _ in range(config.ENEMY_COUNT):
                 position = self.seed.game().choice(
-                    [(x, y) for x, y, t in self.current_map.enumerate() if t == Tile.floor]
+                    [
+                        (x, y)
+                        for x, y, t in self.current_map.enumerate()
+                        if t == Tile.floor
+                    ]
                 )
                 self.enemies.append(
                     Enemy(
@@ -99,14 +103,19 @@ class Game:
         self.player.teleport(self.current_map.start[0], self.current_map.start[1])
 
     def can_level_up(self):
-        return (
-            len(self.enemies) == 0
-            and not self.game_over
-        )
-        
+        return len(self.enemies) == 0 and not self.game_over
+
     def escape(self):
         self.level = 0
         self.on_event(config.LEVEL_FADE_EVENT)
+
+    def respawn(self):
+        print("respawning")
+        self.level = 0
+        self.player.coins = math.floor(self.player.coins / 2)
+        self.player.health = 0.5 * self.player.max_health
+        self.game_over = False
+        self.create()
 
     def level_up(self):
         """Does not check for requirements."""
@@ -143,12 +152,13 @@ class Game:
             match tile:
                 case Tile.bandage:
                     self.player.heal(config.BANDAGE_HEAL_AMOUNT)
-                    self.current_map.set_tile(x, y, Tile.empty)
+                    self.current_map.set_tile(x, y, Tile.floor)
+                    self.on_event(config.HEAL_EVENT)
                     # FIXME: The previous does not account for reloading through saves.
                     break
                 case Tile.exit:
                     if not self.can_level_up():
-                        self.on_event(config.DENIED_LEVEL_UP_EVENT)
+                        self.on_event(config.DENIED_EVENT)
                         continue
                     self.level_up()
                     break
@@ -171,9 +181,7 @@ class Game:
             d = self.player.distance_from(e.x, e.y)
             if d > self.player.bow_range:
                 continue
-            if (
-                distance is None or d < distance
-            ):
+            if distance is None or d < distance:
                 distance = d
                 enemy = e
 
@@ -218,12 +226,69 @@ class Game:
                 delqueue.append(i)
         for i in delqueue:
             del self.enemies[i]
-            
+
+    def get_hearts(self) -> list[int]:
+        count = round(self.player.max_health / 5)
+        one_over_count = 1 / count
+        hearts = []
+        percentage = self.player.health / self.player.max_health
+        for _ in range(count):
+            local_p = min(percentage / one_over_count, 1)
+            percentage -= local_p * one_over_count
+            hearts.append(math.ceil(local_p * 4))
+        return hearts
+
     def variant_arrow(self) -> int:
-        v = min(max(0, math.floor(self.player.arrow_strength * 2) - 1), 8)
-        print(v)
-        return 
+        return min(max(0, math.floor(self.player.arrow_strength * 2) - 1), 8)
+
     def variant_bow(self) -> int:
         return 0 if self.player.bow_range < 7 else 1
+
     def variant_sword(self) -> int:
         return min(max(0, math.floor(self.player.strength) - 1), 7)
+
+    def cost_arrow(self) -> int:
+        return round(self.player.arrow_strength * 2)
+
+    def cost_bow(self) -> int:
+        return 2
+
+    def cost_sword(self) -> int:
+        return round(self.player.strength)
+
+    def cost_health(self) -> int:
+        return round(self.player.max_health / 10 * 3)
+
+    def buy_arrow(self):
+        if self.player.coins < self.cost_arrow():
+            self.on_event(config.DENIED_EVENT)
+            return
+        self.player.coins -= self.cost_arrow()
+        self.player.arrow_strength = self.player.arrow_strength + 0.5
+        self.on_event(config.BUY_EVENT)
+
+    def buy_bow(self):
+        if self.player.coins < self.cost_bow():
+            self.on_event(config.DENIED_EVENT)
+            return
+        self.player.coins -= self.cost_bow()
+        self.player.bow_range = self.player.bow_range + 3
+        self.on_event(config.BUY_EVENT)
+
+    def buy_sword(self):
+        if self.player.coins < self.cost_sword():
+            self.on_event(config.DENIED_EVENT)
+            return
+        self.player.coins -= self.cost_sword()
+        self.player.strength = self.player.strength + 1
+        self.on_event(config.BUY_EVENT)
+
+    def buy_health(self):
+        if self.player.coins < self.cost_health():
+            self.on_event(config.DENIED_EVENT)
+            return
+        self.player.coins -= self.cost_health()
+        percentage = self.player.health / self.player.max_health
+        self.player.max_health += 5
+        self.player.health = percentage * self.player.max_health
+        self.on_event(config.BUY_EVENT)

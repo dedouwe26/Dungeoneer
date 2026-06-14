@@ -25,11 +25,12 @@ MAP_TILES_WIDTH: Final[float] = WINDOW_WIDTH / MAP_WORLD_SIZE
 MAP_TILES_HEIGHT: Final[float] = WINDOW_HEIGHT / MAP_WORLD_SIZE
 
 SHOOT_COOLDOWN: Final[int] = TPS * 1
-MELEE_COOLDOWN: Final[int] = TPS * 0.8
+MELEE_COOLDOWN: Final[int] = TPS // 5 * 4
 MELEE_RANGE: Final[float] = 1.8
+SHOP_RANGE: Final[float] = 0.5
 ARROW_SPEED: Final[float] = 5
 BANDAGE_HEAL_AMOUNT: Final[float] = 3
-STEP_THRESHOLD: Final[float] = 1 ** 2 # dist squared
+STEP_THRESHOLD: Final[float] = 1**2  # dist squared
 
 ENEMY_DAMAGE_EVENT: Final[str] = "enemyhit"
 ENEMY_KILL_EVENT: Final[str] = "enemykill"
@@ -38,10 +39,12 @@ SWING_SWORD_EVENT: Final[str] = "swingsword"
 PLAYER_DAMAGE_EVENT: Final[str] = "playerhit"
 PLAYER_KILL_EVENT: Final[str] = "playerkill"
 PLAYER_STEP_EVENT: Final[str] = "playerstep"
-DENIED_LEVEL_UP_EVENT: Final[str] = "deniedlevelup"
+DENIED_EVENT: Final[str] = "deniedlevelup"
 LEVEL_FADE_EVENT: Final[str] = "levelup"
 ADD_TRAIT_EVENT: Final[str] = "pickup"
 SHOOT_EVENT: Final[str] = "shoot"
+HEAL_EVENT: Final[str] = "heal"
+BUY_EVENT: Final[str] = "buy"
 
 K_MOVE_UP: Final[int] = pygame.K_w
 K_MOVE_LEFT: Final[int] = pygame.K_a
@@ -61,6 +64,7 @@ MAIN_TILESET: Final[int] = 0
 MAP_TILESET: Final[int] = 1
 
 MAP_SIZE: Final[int] = 80
+ESCAPE_STEP_SIZE: Final[int] = 4
 AMOUNT_ROOMS: Final[int] = 15
 ROOM_MIN_SIZE: Final[int] = 8
 ROOM_MAX_SIZE: Final[int] = 15

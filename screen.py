@@ -96,6 +96,10 @@ def render_effects(deltatime):
         if effects[i][0] == 0:
             deleted.append(i)
     for i in deleted:
+        while i >= len(effects):
+            i -= 1
+        if i < 0:
+            continue
         del effects[i]
 
 
@@ -131,7 +135,9 @@ class MainScreen(Screen):
         def r2(x2, y2, s):
             x2 += x
             y2 += y
-            t = self.assets.get_tile(config.MAIN_TILESET, s, self.app.get_variant(x2, y2, s))
+            t = self.assets.get_tile(
+                config.MAIN_TILESET, s, self.app.get_variant(x2, y2, s)
+            )
             if t is None:
                 return
             self.render_in_world(
@@ -145,7 +151,9 @@ class MainScreen(Screen):
         def r(x2, y2, s):
             x2 += x
             y2 += y
-            t = self.assets.get_tile(config.MAIN_TILESET, s, self.app.get_variant(x2, y2, s))
+            t = self.assets.get_tile(
+                config.MAIN_TILESET, s, self.app.get_variant(x2, y2, s)
+            )
             if t is None:
                 return
             self.render_in_world(
@@ -295,7 +303,9 @@ class MainScreen(Screen):
             )
 
     def render_projectiles(self):
-        t = self.assets.get_tile(config.MAIN_TILESET, "arrow")
+        t = self.assets.get_tile(
+            config.MAIN_TILESET, "arrow", variant=self.game.variant_arrow()
+        )
         if t is None:
             print("could not find arrow tile")
             return
@@ -319,13 +329,66 @@ class MainScreen(Screen):
             flip=self.game.player.facing,
         )
 
+    shop_pos: list[tuple[int, int]] = [
+        (0, 7),  # sword
+        (-7, -1),  # bow
+        (-7, 1),  # arrow
+        (0, -7),  # heart
+    ]
+
+    def render_lobby(self):
+        item = self.assets.get_tile(
+            config.MAIN_TILESET, "sword", self.game.variant_sword() + 1
+        )
+        if item is not None:
+            self.render_shop(0, item, self.game.cost_sword())
+        item = self.assets.get_tile(
+            config.MAIN_TILESET, "bow", self.game.variant_bow() + 1
+        )
+        if item is not None:
+            self.render_shop(1, item, self.game.cost_bow())
+        item = self.assets.get_tile(
+            config.MAIN_TILESET, "arrow", self.game.variant_arrow() + 1
+        )
+        if item is not None:
+            self.render_shop(2, item, self.game.cost_arrow())
+        item = self.assets.get_tile(config.MAIN_TILESET, "health", 4)
+        if item is not None:
+            self.render_shop(3, item, self.game.cost_health())
+
+    def render_shop(self, i: int, item: Rect, cost: int):
+        c = config.MAP_SIZE // 2
+        platform = self.assets.get_tile(config.MAIN_TILESET, "platform")
+        if platform is None:
+            return
+        x = self.shop_pos[i][0] + c
+        y = self.shop_pos[i][1] + c
+        self.render_in_world(x, y, self.mainset, platform)
+        x1: float = x + 0.5
+        y1: float = y + 0.5
+        t = pygame.time.get_ticks() / 1000
+        sc = self.calculate_screen(x1, y1 - 0.5)
+        temp = Surface((item.width, item.height), flags=pygame.SRCALPHA)
+        temp.blit(self.mainset, (0, 0), item)
+        t = math.cos(t)
+        if t < 0:
+            temp = pygame.transform.flip(temp, True, False)
+        temp = pygame.transform.scale_by(temp, (abs(t), 1))
+        rect = temp.get_rect()
+        self.display.blit(temp, (sc[0] - rect.w / 2, sc[1] - rect.h / 2), rect)
+        d = self.game.player.distance_from(x1, y1)
+        if d < config.SHOP_RANGE:
+            font = self.assets.get_font()
+            self.display.blit(
+                font.render(str(cost), False, config.CYAN),
+                (self.width / 2 + config.WORLD_SIZE / 2, self.height / 2),
+            )
+
     def render_ui(self):
         font = self.assets.get_font()
         # levels
-        text = font.render(
-            str(self.game.level), False, config.BLUE
-        )
-        self.display.blit(text, text.get_rect(top = 0, centerx = self.width / 2))
+        text = font.render(str(self.game.level), False, config.BLUE)
+        self.display.blit(text, text.get_rect(top=0, centerx=self.width / 2))
 
         # coins
         tile = self.assets.get_tile(config.MAIN_TILESET, "coin")
@@ -333,69 +396,98 @@ class MainScreen(Screen):
             print("no coin tile found")
             return
         self.display.blit(self.mainset, (0, 0), tile)
-        text = font.render(
-            str(self.game.player.coins), False, config.CYAN
-        )
-        self.display.blit(text, text.get_rect(left = tile.w, top = 0))
-        
+        text = font.render(str(self.game.player.coins), False, config.CYAN)
+        self.display.blit(text, text.get_rect(left=tile.w, top=0))
+
         # enemy count
         tile = self.assets.get_tile(config.MAIN_TILESET, "greenenemy", variant=0)
         if tile is None:
             print("no greenenemy 0 tile found")
             return
         self.display.blit(self.mainset, (self.width - tile.width, 0), tile)
-        text = font.render(
-            str(len(self.game.enemies)), False, config.GREEN
-        )
-        rect = text.get_rect(top = 0)
+        text = font.render(str(len(self.game.enemies)), False, config.GREEN)
+        rect = text.get_rect(top=0)
         rect.x = self.width - tile.width - rect.width
         self.display.blit(text, rect)
+
+        # health
+        hearts = self.game.get_hearts()
+        for i in range(len(hearts)):
+            tile = self.assets.get_tile(
+                config.MAIN_TILESET, "health", variant=hearts[i]
+            )
+            if tile is None:
+                print(f"no health {hearts[i]} tile found")
+                return
+            self.display.blit(
+                self.mainset,
+                (i * (rect.width + 4) + 4, self.height - rect.height - 4),
+                tile,
+            )
 
     def render(self, deltatime: float):
         super().render(deltatime)
         self.display.fill(config.BACKGROUND)
         self.render_map()
         self.render_enemies()
+        if self.game.level == 0:
+            self.render_lobby()
         self.render_player()
         self.render_projectiles()
         render_effects(deltatime)
         self.render_ui()
 
-    def render_item(self, s: str, variant: int, angle: float, close: bool = False, tileset: int = config.MAIN_TILESET):
-            item = self.assets.get_tile(tileset, s, variant)
-            cropped = pygame.Surface(
-                (item.width, item.height), pygame.SRCALPHA
-            )
-            cropped.blit(self.mainset, (0, 0), item)
-            rotated = pygame.transform.rotate(
-                pygame.transform.flip(cropped, False, False),
-                -angle + 90,
-            )
-            if close:
-                offset = pygame.Vector2(0, 0).rotate(angle)
-            else:
-                offset = pygame.Vector2(-item.w * 0.6, -item.w * 0.6).rotate(angle)
+    def render_item(
+        self,
+        s: str,
+        variant: int,
+        angle: float,
+        close: bool = False,
+        tileset: int = config.MAIN_TILESET,
+    ):
+        item = self.assets.get_tile(tileset, s, variant)
+        if item is None:
+            print(f"no tile {s}")
+            return
+        cropped = pygame.Surface((item.width, item.height), pygame.SRCALPHA)
+        cropped.blit(self.mainset, (0, 0), item)
+        rotated = pygame.transform.rotate(
+            pygame.transform.flip(cropped, False, False),
+            -angle + 90,
+        )
+        if close:
+            offset = pygame.Vector2(0, 0).rotate(angle)
+        else:
+            offset = pygame.Vector2(-item.w * 0.6, -item.w * 0.6).rotate(angle)
 
-            self.display.blit(
-                rotated,
-                rotated.get_rect(
-                    center=(self.width / 2, self.height / 2 - item.width * 0.4) + offset
-                ),
-            )
+        self.display.blit(
+            rotated,
+            rotated.get_rect(
+                center=(self.width / 2, self.height / 2 - item.width * 0.4) + offset
+            ),
+        )
 
     def on_event(self, event_name: str):
         global should_block_input
+
         def swing(i: int):
             interval = 1 - (i / (config.FPS // 4))
             angle = interval * 180 + 90
             self.render_item("sword", self.game.variant_sword(), angle)
+
         def bow(i: int):
             # interval = i / (config.FPS // 4)
-            self.render_item("bow", self.game.variant_bow(), 360 - self.game.proj_angle + 225, True)
+            self.render_item(
+                "bow", self.game.variant_bow(), 360 - self.game.proj_angle + 225, True
+            )
 
         def player_kill(i: int):
-            sec_passed = (-i - 1) / config.FPS
-            alpha = min(255, round(255 * (sec_passed)))
+            global should_block_input
+            sec_passed = 4 - i / (config.FPS)
+            alpha = round(255 * math.sin(sec_passed / 4 * math.tau))
+            if alpha >= 254 and self.game.game_over:
+                self.game.respawn()
+                should_block_input = False
             gameover = Surface((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
             gameover.fill(config.BACKGROUND)
             gameover.set_alpha(alpha)
@@ -407,14 +499,15 @@ class MainScreen(Screen):
             rect.bottom = self.height // 2
             self.display.blit(text, rect)
 
-            text = self.assets.get_font().render(
-                "You've reached level " + str(self.game.level), False, config.YELLOW
-            )
-            text.set_alpha(alpha // 100 * 255)
-            rect = text.get_rect()
-            rect.centerx = self.width // 2
-            rect.top = self.height // 2
-            self.display.blit(text, rect)
+            if self.game.game_over:
+                text = self.assets.get_font().render(
+                    "You've reached level " + str(self.game.level), False, config.YELLOW
+                )
+                text.set_alpha(alpha // 100 * 255)
+                rect = text.get_rect()
+                rect.centerx = self.width // 2
+                rect.top = self.height // 2
+                self.display.blit(text, rect)
 
         def fade(i: int):
             global should_block_input
@@ -439,7 +532,7 @@ class MainScreen(Screen):
             surf.fill(config.RED)
             surf.set_alpha(alpha)
             self.display.blit(surf, (0, 0), surf.get_rect())
-            
+
         def chest(i: int):
             interval = i / (config.FPS * 1)
             t = self.assets.get_tile(config.MAIN_TILESET, "emptychest")
@@ -448,24 +541,18 @@ class MainScreen(Screen):
                 return
             x = self.map().chest_pos[0]
             y = self.map().chest_pos[1]
-            self.render_in_world(
-                x,
-                y,
-                self.mainset,
-                t,
-                interval
-            )
+            self.render_in_world(x, y, self.mainset, t, interval)
 
         super().on_event(event_name)
         match event_name:
             case config.PLAYER_KILL_EVENT:
                 should_block_input = True
                 self.game.game_over = True
-                effects.append([-1, player_kill])
+                effects.append([config.FPS * 4, player_kill])
             case config.LEVEL_FADE_EVENT:
                 should_block_input = True
                 effects.append([config.FPS * 1, fade])
-            case config.DENIED_LEVEL_UP_EVENT:
+            case config.DENIED_EVENT:
                 effects.append([config.FPS * 1, deny])
             case config.SWING_SWORD_EVENT:
                 effects.append([config.FPS // 4, swing])
@@ -490,6 +577,9 @@ class MainScreen(Screen):
             case config.K_INTERACT:
                 if should_block_input:
                     return
+                if self.game.level == 0:
+                    if self.shop_interact():
+                        return
                 self.game.interact()
             case config.K_ATTACK:
                 if should_block_input:
@@ -499,6 +589,22 @@ class MainScreen(Screen):
                 if should_block_input:
                     return
                 self.game.ranged()
+
+    def shop_interact(self) -> bool:
+        c = config.MAP_SIZE / 2
+        handlers = [
+            self.game.buy_sword,
+            self.game.buy_bow,
+            self.game.buy_arrow,
+            self.game.buy_health,
+        ]
+        for i in range(len(self.shop_pos)):
+            x = c + self.shop_pos[i][0] + 0.5
+            y = c + self.shop_pos[i][1] + 0.5
+            if self.game.player.distance_from(x, y) < config.SHOP_RANGE:
+                handlers[i]()
+                return True
+        return False
 
 
 class MapScreen(Screen):
@@ -533,7 +639,7 @@ class MapScreen(Screen):
                 math.floor(self.y - half_height), math.ceil(self.y + half_height)
             ):
                 self.render_tile(x, y, self.map().get_tile(x, y))
-        
+
         t = self.assets.get_tile(config.MAP_TILESET, "enemy")
         if t is None:
             print("enemy map tile not found")
@@ -543,7 +649,7 @@ class MapScreen(Screen):
             y = math.floor(enemy.y)
             screen = self.calculate_screen(x, y)
             self.display.blit(self.maptileset, screen, t)
-        
+
         t = self.assets.get_tile(config.MAP_TILESET, "player")
         if t is None:
             print("player map tile not found")
@@ -552,14 +658,17 @@ class MapScreen(Screen):
         y = math.floor(self.game.player.y)
         screen = self.calculate_screen(x, y)
         self.display.blit(self.maptileset, screen, t)
-            
 
     def render_tile(self, x: int, y: int, tile: Tile):
         def empty(x2, y2):
             return self.map().get_tile(x + x2, y + y2) == Tile.empty
 
         def r(s):
-            t = self.assets.get_tile(config.MAP_TILESET, s, self.app.get_variant(x, y, s, tileset=config.MAP_TILESET))
+            t = self.assets.get_tile(
+                config.MAP_TILESET,
+                s,
+                self.app.get_variant(x, y, s, tileset=config.MAP_TILESET),
+            )
             if t is None:
                 print("map tile not found: ", s)
                 return

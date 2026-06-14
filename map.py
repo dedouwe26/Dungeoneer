@@ -4,6 +4,7 @@ from typing import Generator
 
 from config import (
     AMOUNT_ROOMS,
+    ESCAPE_STEP_SIZE,
     HALLWAY_ROOM_CHANCE,
     HALLWAY_ROOM_MAX_SIZE,
     HALLWAY_ROOM_MIN_SIZE,
@@ -28,8 +29,16 @@ class Tile(Enum):
         return self in (self.empty, self.chest, self.obstacle)
 
     def has_ground(self) -> bool:
-        return self in (self.floor, self.chest, self.entrance, self.exit, self.bandage, self.escape, self.obstacle)
-    
+        return self in (
+            self.floor,
+            self.chest,
+            self.entrance,
+            self.exit,
+            self.bandage,
+            self.escape,
+            self.obstacle,
+        )
+
     def get_simple_name(self) -> str:
         match self:
             case self.chest:
@@ -84,7 +93,9 @@ class Map:
         for room in rooms:
             for i in range(room[0], room[0] + room[2]):
                 for j in range(room[1], room[1] + room[3]):
-                    self.map[i][j] = Tile.obstacle if self.random.random() < 0.05 else Tile.floor
+                    self.map[i][j] = (
+                        Tile.obstacle if self.random.random() < 0.05 else Tile.floor
+                    )
 
         # Generate hallways
         for i in range(len(rooms) - 1):
@@ -161,11 +172,11 @@ class Map:
             for j in range(MAP_SIZE)
             if self.map[i][j] == Tile.floor
         ]
-        
+
         # escape
-        if (self.level % 5) == 0:
-            room = rooms[len(rooms) // 2]
-            self.map[room[0] + room[2] // 2][room[1] + room[3] // 2] = Tile.escape
+        # if (self.level % ESCAPE_STEP_SIZE) == 0:
+        room = rooms[len(rooms) // 2]
+        self.map[room[0] + room[2] // 2][room[1] + room[3] // 2] = Tile.escape
 
         self.chest_pos = self.random.choice(floor_positions)
         floor_positions.remove(self.chest_pos)
@@ -180,30 +191,35 @@ class Map:
             self.map[position[0]][position[1]] = Tile.bandage
 
         self.generate_random_map()
-            
+
     def generate_lobby(self):
         half = MAP_SIZE // 2
-        half_width = 4
-        size = 15
+        half_width = 2
+        size = 10
         for col in range(len(self.map)):
             x = abs(col - half)
             for row in range(len(self.map[col])):
                 y = abs(row - half)
-                filled = (
-                    x <= half_width or y <= half_width
-                ) and (
+                filled = (x <= half_width or y <= half_width) and (
                     x < size and y < size
                 )
                 if filled:
                     self.map[col][row] = Tile.floor
 
         self.map[half + size - half_width][half] = Tile.exit
+        offsets = [half_width, -half_width, half_width + 1, -half_width - 1]
+        for x in offsets:
+            for y in offsets:
+                self.map[half + x][half + y] = Tile.obstacle
 
         self.start = (half, half)
         self.random_map = [[0 for y in range(MAP_SIZE)] for x in range(MAP_SIZE)]
-        
+
     def generate_random_map(self):
-        self.random_map = [[self.random.randint(0, 100) for y in range(MAP_SIZE)] for x in range(MAP_SIZE)]
+        self.random_map = [
+            [self.random.randint(0, 100) for y in range(MAP_SIZE)]
+            for x in range(MAP_SIZE)
+        ]
 
     def enumerate(self) -> Generator[tuple[int, int, Tile], None, None]:
         for x, column in enumerate(self.map):
